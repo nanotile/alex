@@ -1,0 +1,1 @@
+https://www.udemy.com/course/generative-and-agentic-ai-in-production/learn/lecture/52584065/?udfrontends=true&couponCode=CP251118BG1
