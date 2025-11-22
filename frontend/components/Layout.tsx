@@ -86,7 +86,7 @@ export default function Layout({ children }: LayoutProps) {
                 <span className="hidden sm:inline text-sm text-gray-600">
                   {user?.firstName || user?.emailAddresses[0]?.emailAddress}
                 </span>
-                <UserButton afterSignOutUrl="/" />
+                <UserButton />
               </div>
             </div>
 
