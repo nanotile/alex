@@ -1,0 +1,20 @@
+# ============================================================================
+# Terraform Variables for Module 0: Foundation
+# Copy this file to terraform.tfvars and fill in your values
+# ============================================================================
+
+# REQUIRED: Your GCP Project ID
+gcp_project = "your-project-id-here"
+
+# GCP Region (us-central1 recommended for Vertex AI availability)
+gcp_region = "us-central1"
+
+# Project name prefix (used for resource naming)
+project_name = "alex"
+
+# Labels to apply to all resources
+labels = {
+  project     = "alex"
+  managed_by  = "terraform"
+  environment = "dev"
+}

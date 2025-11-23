@@ -1,0 +1,28 @@
+# ============================================================================
+# Terraform Variables for Module 2: Embeddings
+# Copy this file to terraform.tfvars and fill in your values
+# ============================================================================
+
+# REQUIRED: Your GCP Project ID
+# Should match what you set in Module 0
+gcp_project = "your-project-id-here"
+
+# GCP Region (should match Module 0)
+gcp_region = "us-central1"
+
+# Project name prefix (should match Module 0)
+project_name = "alex-gcl"
+
+# Embedding model to use
+# Default: text-embedding-004 (Google's latest, 768 dimensions)
+# Alternatives:
+#   - text-embedding-005 (newest, if available in your region)
+#   - text-multilingual-embedding-002 (multilingual support)
+embedding_model_name = "text-embedding-004"
+
+# Labels to apply to all resources
+labels = {
+  project     = "alex-gcl"
+  managed_by  = "terraform"
+  environment = "dev"
+}
