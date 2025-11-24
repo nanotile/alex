@@ -1,0 +1,25 @@
+# GCP Configuration
+gcp_project = "your-project-id"
+gcp_region  = "us-central1"
+
+# Cloud SQL Configuration (from terraform_GCP/5_database/terraform output)
+cloud_sql_instance_connection_name = "project:region:instance"
+cloud_sql_database                 = "alex"
+cloud_sql_user                     = "alex_admin"
+cloud_sql_password_secret_name     = "alex-db-password"
+
+# AWS Bedrock Configuration
+bedrock_model_id = "us.amazon.nova-pro-v1:0"
+bedrock_region   = "us-west-2"
+
+# Docker Image (from Artifact Registry)
+docker_image = "us-central1-docker.pkg.dev/your-project/alex-gcl-docker-repo/tagger-agent:latest"
+
+# Cloud Run Configuration
+service_name         = "tagger-agent"
+max_instances        = 3
+min_instances        = 0  # Scale to zero when not in use
+cpu                  = "1"
+memory               = "512Mi"
+timeout_seconds      = 300
+allow_unauthenticated = true  # For demo purposes
