@@ -178,7 +178,53 @@ When a student asks for help:
 2. **Ask what they're trying to accomplish** - Understand the goal before diving into code
 3. **Ask what error or behavior they're seeing** - Get the actual error message, not their interpretation
 
-### 2. **Diagnose Before Fixing** ⚠️ MOST IMPORTANT
+### 2. **Use Project Git Utilities** 🔧 IMPORTANT
+
+**ALWAYS use the project's git utility scripts instead of raw git commands.**
+
+The project has cross-platform Python git utilities in `/KB_github_UTILITIES/git_utilities/`:
+
+**Available utilities:**
+- `github_new_branch.py` - Create new branch from main (automatically pushes to GitHub)
+- `burn_it_down_start_new.py` - Delete broken branch & start fresh
+- `what_has_changed_in_branch.py` - Compare branches with multiple methods
+- `delete_branches.py` - Delete branches safely with list view
+
+**Usage (from project root):**
+```bash
+# Create new branch (interactive, will prompt for name)
+uv run KB_github_UTILITIES/git_utilities/github_new_branch.py
+
+# Or from the git_utilities directory
+cd KB_github_UTILITIES/git_utilities
+uv run github_new_branch.py
+```
+
+**Why use these instead of raw git commands:**
+- ✅ Cross-platform (Windows/Mac/Linux)
+- ✅ One command does everything (no "local vs remote" confusion)
+- ✅ Better error handling and colored output
+- ✅ Interactive prompts (no need to remember arguments)
+- ✅ Follows project standards
+- ✅ Pushes to GitHub immediately (no forgotten pushes)
+
+**Example workflow:**
+```bash
+# DON'T DO THIS (manual git commands):
+git checkout main
+git pull origin main
+git checkout -b new-feature
+git push -u origin new-feature  # Easy to forget!
+
+# DO THIS (use the utility):
+uv run KB_github_UTILITIES/git_utilities/github_new_branch.py
+# Enter branch name when prompted
+# Done! Branch created and pushed to GitHub automatically
+```
+
+See `/KB_github_UTILITIES/git_utilities/README.md` for complete documentation.
+
+### 3. **Diagnose Before Fixing** ⚠️ MOST IMPORTANT
 
 **DO NOT jump to conclusions and write lots of code before the problem is truly understood.**
 
