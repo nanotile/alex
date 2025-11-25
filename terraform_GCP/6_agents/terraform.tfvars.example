@@ -8,9 +8,8 @@ cloud_sql_database                 = "alex"
 cloud_sql_user                     = "alex_admin"
 cloud_sql_password_secret_name     = "alex-db-password"
 
-# AWS Bedrock Configuration
-bedrock_model_id = "us.amazon.nova-pro-v1:0"
-bedrock_region   = "us-west-2"
+# GCP Vertex AI Configuration
+vertex_model_id = "gemini-2.0-flash-exp"
 
 # Docker Image (from Artifact Registry)
 docker_image = "us-central1-docker.pkg.dev/your-project/alex-gcl-docker-repo/tagger-agent:latest"

@@ -32,16 +32,10 @@ variable "cloud_sql_password_secret_name" {
   default     = "alex-db-password"
 }
 
-variable "bedrock_model_id" {
-  description = "AWS Bedrock model ID"
+variable "vertex_model_id" {
+  description = "GCP Vertex AI model ID"
   type        = string
-  default     = "us.amazon.nova-pro-v1:0"
-}
-
-variable "bedrock_region" {
-  description = "AWS Bedrock region"
-  type        = string
-  default     = "us-west-2"
+  default     = "gemini-2.0-flash-exp"
 }
 
 variable "docker_image" {

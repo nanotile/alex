@@ -23,18 +23,18 @@ resource "google_cloud_run_v2_service" "tagger_agent" {
 
       # Environment variables for the service
       env {
-        name  = "BEDROCK_MODEL_ID"
-        value = var.bedrock_model_id
+        name  = "VERTEX_MODEL_ID"
+        value = var.vertex_model_id
       }
 
       env {
-        name  = "BEDROCK_REGION"
-        value = var.bedrock_region
+        name  = "VERTEX_PROJECT"
+        value = var.gcp_project
       }
 
       env {
-        name  = "AWS_REGION_NAME"
-        value = var.bedrock_region
+        name  = "VERTEX_LOCATION"
+        value = var.gcp_region
       }
 
       env {
@@ -96,6 +96,13 @@ resource "google_secret_manager_secret_iam_member" "cloud_run_secret_access" {
 resource "google_project_iam_member" "cloud_run_sql_client" {
   project = var.gcp_project
   role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
+}
+
+# Grant the Cloud Run service account access to Vertex AI
+resource "google_project_iam_member" "cloud_run_vertex_user" {
+  project = var.gcp_project
+  role    = "roles/aiplatform.user"
   member  = "serviceAccount:${data.google_project.project.number}-compute@developer.gserviceaccount.com"
 }
 

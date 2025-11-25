@@ -220,8 +220,9 @@ async def tag_instruments_endpoint(request: TagRequest):
 async def startup_event():
     """Initialize services on startup"""
     logger.info("Starting Tagger Agent service...")
-    logger.info(f"Bedrock Region: {os.getenv('BEDROCK_REGION', 'not set')}")
-    logger.info(f"Model ID: {os.getenv('BEDROCK_MODEL_ID', 'not set')}")
+    logger.info(f"Vertex AI Project: {os.getenv('VERTEX_PROJECT', 'not set')}")
+    logger.info(f"Vertex AI Location: {os.getenv('VERTEX_LOCATION', 'not set')}")
+    logger.info(f"Model ID: {os.getenv('VERTEX_MODEL_ID', 'gemini-2.0-flash-exp')}")
     logger.info(f"Cloud SQL Instance: {os.getenv('CLOUD_SQL_INSTANCE', 'not set')}")
 
 
