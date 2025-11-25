@@ -1,3 +1,6 @@
+@./CLAUDE_CODE_SYSTEM_REQUIREMENTS.md
+@./KB_FILE_STRUCTURE.md
+
 # Alex - AI in Production Course Project Guide
 
 ## Project Overview

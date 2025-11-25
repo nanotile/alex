@@ -1,0 +1,19 @@
+[project]
+name = "tagger-gcp"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.6",
+    "uvicorn>=0.34.0",
+    "openai-agents[litellm]>=0.2.6",
+    "pydantic>=2.11.7",
+    "python-dotenv>=1.1.1",
+    "tenacity>=9.1.2",
+    "cloud-sql-python-connector>=1.18.5",
+    "pg8000>=1.31.5",
+    "sqlalchemy>=2.0.44",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
