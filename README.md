@@ -1,6 +1,6 @@
 # Alex - the Agentic Learning Equities Explainer
 
-## Multi-agent Enterprise-Grade SaaS Financial Planner
+## Multi-agent Enterprise-Grade SaaS Financial Planner on AWS
 
 ![Course Image](assets/alex.png)
 

@@ -3,6 +3,156 @@
 
 # Alex - AI in Production Course Project Guide
 
+## Essential Commands - Quick Reference
+
+### Backend Development (Python/uv)
+
+```bash
+# Run local tests with mocks (fast, no AWS required)
+cd backend/<agent-name> && uv run pytest test_simple.py
+
+# Run deployment tests (requires AWS resources)
+cd backend/<agent-name> && uv run pytest test_full.py
+
+# Run specific test
+cd backend/<agent-name> && uv run pytest test_simple.py::test_function_name -v
+
+# Run tests with coverage
+cd backend && uv run pytest --cov=. --cov-report=html
+
+# Package Lambda function for deployment (Docker must be running!)
+cd backend/<agent-name> && uv run package_docker.py
+
+# Add a Python dependency
+cd backend/<agent-name> && uv add <package-name>
+
+# Run a Python script
+cd backend/<agent-name> && uv run script.py
+```
+
+### Frontend Development (NextJS)
+
+```bash
+# Start development server (localhost:3000)
+cd frontend && npm run dev
+
+# Build for production
+cd frontend && npm run build
+
+# Run unit tests (Jest + React Testing Library)
+cd frontend && npm test
+
+# Run unit tests in watch mode
+cd frontend && npm run test:watch
+
+# Run E2E tests (Playwright)
+cd frontend && npm run test:e2e
+
+# Run E2E tests with UI
+cd frontend && npm run test:e2e:ui
+
+# Lint code
+cd frontend && npm run lint
+```
+
+### Terraform (Infrastructure)
+
+```bash
+# IMPORTANT: Always configure terraform.tfvars first!
+# Copy example and edit: cp terraform.tfvars.example terraform.tfvars
+
+# Initialize (first time only per directory)
+cd terraform/<X_directory> && terraform init
+
+# Preview changes
+cd terraform/<X_directory> && terraform plan
+
+# Deploy infrastructure
+cd terraform/<X_directory> && terraform apply
+
+# View outputs (ARNs, URLs, etc.)
+cd terraform/<X_directory> && terraform output
+
+# Destroy resources (cost savings!)
+cd terraform/<X_directory> && terraform destroy
+```
+
+### Git Operations (Use Project Utilities)
+
+```bash
+# Create new branch (interactive, auto-pushes to GitHub)
+uv run KB_github_UTILITIES/git_utilities/github_new_branch.py
+
+# Compare branches
+uv run KB_github_UTILITIES/git_utilities/what_has_changed_in_branch.py
+
+# Delete broken branch and start fresh
+uv run KB_github_UTILITIES/git_utilities/burn_it_down_start_new.py
+
+# Delete branches safely
+uv run KB_github_UTILITIES/git_utilities/delete_branches.py
+```
+
+### AWS Debugging
+
+```bash
+# Tail CloudWatch logs for a Lambda
+aws logs tail /aws/lambda/alex-<agent-name> --follow
+
+# Check RDS cluster status
+aws rds describe-db-clusters --db-cluster-identifier alex-cluster
+
+# List Lambda functions
+aws lambda list-functions --query 'Functions[?starts_with(FunctionName, `alex`)].FunctionName'
+
+# Check SageMaker endpoint
+aws sagemaker describe-endpoint --endpoint-name alex-embeddings
+
+# Test API Gateway endpoint
+curl -X POST https://<api-id>.execute-api.<region>.amazonaws.com/prod/analyze \
+  -H "x-api-key: <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"test": "data"}'
+```
+
+### Multi-Cloud Deployment Scripts
+
+```bash
+# Deploy frontend
+cd scripts && uv run deploy.py
+
+# Run local development
+cd scripts && uv run run_local.py
+
+# Destroy all resources
+cd scripts && uv run destroy.py
+
+# AWS deployment status and cost management
+cd scripts/AWS_START_STOP && uv run deployment_status.py        # Check what's deployed
+cd scripts/AWS_START_STOP && uv run deployment_status.py --summary  # Quick summary
+cd scripts/AWS_START_STOP && uv run minimize_costs.py          # Destroy expensive resources
+cd scripts/AWS_START_STOP && uv run restart_infrastructure.py  # Restore resources
+```
+
+---
+
+## Infrastructure by Guide - Quick Reference
+
+| Guide | Services Deployed | Key Test Command | Cost Impact |
+|-------|-------------------|------------------|-------------|
+| 1 | IAM permissions | Manual verification in AWS Console | Free |
+| 2 | SageMaker Serverless endpoint | Test via Guide 3 ingest | ~$0.20/hr idle |
+| 3 | S3 Vectors, Lambda, API Gateway | `uv run backend/ingest/test_ingest_s3vectors.py` | ~$5/month |
+| 4 | App Runner (Researcher) | `uv run backend/researcher/test_research.py` | ~$5/month |
+| 5 | Aurora Serverless v2 | `uv run backend/database/test_data_api.py` | **~$40/month** |
+| 6 | 5 Lambda agents, SQS | `uv run backend/planner/test_simple.py` | ~$10/month |
+| 7 | CloudFront, S3, API Lambda | `cd frontend && npm run build` | ~$5/month |
+| 8 | CloudWatch dashboards | Manual verification in AWS Console | ~$5/month |
+
+**Cost Management**: Aurora (Guide 5) is the biggest cost. Destroy it when not actively working: `cd terraform/5_database && terraform destroy`
+
+---
+
 ## Project Overview
 
 **Alex** (Agentic Learning Equities eXplainer) is a multi-agent enterprise-grade SaaS financial planning platform. This is the capstone project for Weeks 3 and 4 of the "AI in Production" course taught by Ed Donner on Udemy that deploys Agent solutions to production.
@@ -241,7 +391,7 @@ Common mistakes to avoid:
 4. **Propose minimal fix** - Change one thing at a time
 5. **Test and verify** - Confirm the fix works before moving on
 
-### 3. **Common Root Causes (Check These First)**
+**Common Root Causes to Check First:**
 
 Before writing any code, check these common issues:
 
@@ -406,10 +556,75 @@ async def get_market_insights(
 ...
 ```
 
-IMPORTANT: when using Bedrock through LiteLLM, LiteLLM needs this environment variable set:   
-`os.environ["AWS_REGION_NAME"] = bedrock_region`  
+IMPORTANT: when using Bedrock through LiteLLM, LiteLLM needs this environment variable set:
+`os.environ["AWS_REGION_NAME"] = bedrock_region`
 This is confusing as other services sometimes expect `"AWS_REGION"` or `"DEFAULT_AWS_REGION"`. But LiteLLM needs `AWS_REGION_NAME` as documented here: https://docs.litellm.ai/docs/providers/bedrock.
 
+---
+
+## Key Architectural Decisions & Patterns
+
+### Multi-Agent Orchestration Pattern
+- **Pattern**: Orchestrator (Planner) + Specialist agents (Tagger, Reporter, Charter, Retirement)
+- **Why**: Separation of concerns, enables parallel execution, specialized domain expertise per agent
+- **Implementation**: `backend/planner/agent.py` coordinates via Lambda invocations or SQS messages
+- **Context Passing**: User context passed via `Agent[ContextType]` and `RunContextWrapper[ContextType]` for tools
+
+### OpenAI Agents SDK Constraint
+- **Limitation**: Cannot use BOTH Structured Outputs AND Tool calling in the same agent
+- **Root Cause**: LiteLLM + Bedrock compatibility limitation
+- **Workaround**: Each agent uses EITHER Structured Outputs OR Tools, never both
+- **Decision Point**: Choose based on agent needs - complex data structures favor Structured Outputs, external API calls favor Tools
+
+### LiteLLM Environment Variable Requirement
+- **Critical**: Must set `os.environ["AWS_REGION_NAME"]` (NOT `AWS_REGION` or `DEFAULT_AWS_REGION`)
+- **Why**: LiteLLM-specific requirement for Bedrock provider integration
+- **Impact**: Set in all agent `lambda_handler.py` files before LiteLLM model creation
+- **Documentation**: https://docs.litellm.ai/docs/providers/bedrock
+- **Common Error**: "Model not found" or "Access denied" if not set correctly
+
+### Database Access Pattern (Aurora Data API)
+- **Choice**: Aurora Data API instead of VPC-connected database access
+- **Why**:
+  - Simpler Lambda integration (no VPC configuration)
+  - No connection pool management needed
+  - Automatic IAM authentication via ARN
+  - Easier to teach and understand for students
+- **Trade-off**: Slight latency increase (~50-100ms) vs operational simplicity
+- **Implementation**: `backend/database/` shared library with async SQL execution
+
+### Cost-Optimized Vector Storage (S3 Vectors)
+- **Choice**: S3 Vectors instead of OpenSearch, Pinecone, or ChromaDB
+- **Why**: 90% cost reduction, serverless, no cluster management
+- **Trade-off**: Slightly slower query times vs massive cost savings for educational project
+- **Use Case**: Financial document embeddings for Researcher agent context
+
+### Terraform Independent Directories
+- **Choice**: Each guide has independent terraform directory with local state
+- **Why**:
+  - Students can deploy incrementally (guide by guide)
+  - No complex remote state setup needed (simpler for learning)
+  - Can destroy individual components independently
+  - Failure in one guide doesn't block others
+- **Trade-off**: No cross-directory dependencies automated, must copy ARNs manually
+- **Educational Value**: Students understand each service deployment independently
+
+### NextJS Pages Router (not App Router)
+- **Choice**: Pages Router for frontend
+- **Why**:
+  - Clerk authentication has better documentation for Pages Router
+  - Simpler mental model for students new to NextJS
+  - Course was designed with Pages Router patterns
+- **Note**: App Router is newer but requires different patterns
+
+### Multi-Cloud Strategy (AWS Primary, GCP Secondary)
+- **Current State**: AWS is production-ready, GCP is in development
+- **Why**:
+  - Teach cloud-agnostic AI agent patterns
+  - Demonstrate LiteLLM multi-cloud abstraction
+  - Avoid vendor lock-in
+  - Students learn two major cloud providers
+- **Implementation**: Shared agent code, cloud-specific infrastructure in separate terraform directories
 
 ---
 

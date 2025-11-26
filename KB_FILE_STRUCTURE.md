@@ -8,8 +8,7 @@ graph TB
     ROOT --> GUIDES[guides/]
     ROOT --> BACKEND[backend/]
     ROOT --> FRONTEND[frontend/]
-    ROOT --> TERRAFORM_AWS[terraform/<br/>AWS Infrastructure]
-    ROOT --> TERRAFORM_GCP[terraform_GCP/<br/>GCP Infrastructure]
+    ROOT --> TERRAFORM_AWS[terraform/<br/>Infrastructure as Code]
     ROOT --> SCRIPTS[scripts/]
     ROOT --> UTILITIES[KB_github_UTILITIES/<br/>Git Tools]
     ROOT --> TESTING_GUIDES[TESTING_CODE_GUIDES/<br/>Test Documentation]
@@ -30,24 +29,20 @@ graph TB
     GUIDES --> G_INFO[Course Guides<br/>8-Day Curriculum]
 
     %% Backend Directory - AWS Agents
-    BACKEND --> B_AWS_AGENTS[AWS Agents]
-    BACKEND --> B_GCP_AGENTS[GCP Agents]
+    BACKEND --> B_AGENTS[AI Agents]
     BACKEND --> B_SHARED[Shared Infrastructure]
     BACKEND --> B_TESTING[Testing]
 
-    B_AWS_AGENTS --> PLANNER[planner/<br/>Orchestrator]
-    B_AWS_AGENTS --> TAGGER[tagger/<br/>Classifier]
-    B_AWS_AGENTS --> REPORTER[reporter/<br/>Analysis]
-    B_AWS_AGENTS --> REPORTER_1[reporter_1/<br/>Analysis v1]
-    B_AWS_AGENTS --> CHARTER[charter/<br/>Visualization]
-    B_AWS_AGENTS --> RETIREMENT[retirement/<br/>Projections]
-    B_AWS_AGENTS --> RESEARCHER[researcher/<br/>Market Research]
-
-    B_GCP_AGENTS --> TAGGER_GCP[tagger_gcp/<br/>GCP Classifier]
+    B_AGENTS --> PLANNER[planner/<br/>Orchestrator]
+    B_AGENTS --> TAGGER[tagger/<br/>Classifier]
+    B_AGENTS --> REPORTER[reporter/<br/>Analysis]
+    B_AGENTS --> REPORTER_1[reporter_1/<br/>Analysis v1]
+    B_AGENTS --> CHARTER[charter/<br/>Visualization]
+    B_AGENTS --> RETIREMENT[retirement/<br/>Projections]
+    B_AGENTS --> RESEARCHER[researcher/<br/>Market Research]
 
     B_SHARED --> INGEST[ingest/<br/>Document Ingestion]
-    B_SHARED --> DATABASE[database/<br/>AWS Aurora Library]
-    B_SHARED --> DATABASE_GCP[database_gcp/<br/>GCP CloudSQL Library]
+    B_SHARED --> DATABASE[database/<br/>Aurora Library]
     B_SHARED --> API[api/<br/>FastAPI Backend]
     B_SHARED --> SCHEDULER[scheduler/<br/>Job Scheduling]
 
@@ -86,24 +81,11 @@ graph TB
     TERRAFORM_AWS --> TF7[7_frontend/<br/>CloudFront + S3]
     TERRAFORM_AWS --> TF8[8_enterprise/<br/>Monitoring]
 
-    %% Terraform GCP Directory
-    TERRAFORM_GCP --> TFG0[0_foundation/<br/>GCP Project Setup]
-    TERRAFORM_GCP --> TFG1[1_network/<br/>VPC & Networking]
-    TERRAFORM_GCP --> TFG2[2_embeddings/<br/>Vertex AI Embeddings]
-    TERRAFORM_GCP --> TFG3[3_ingestion/<br/>GCS + Cloud Functions]
-    TERRAFORM_GCP --> TFG4[4_researcher/<br/>Cloud Run Service]
-    TERRAFORM_GCP --> TFG5[5_database/<br/>Cloud SQL PostgreSQL]
-    TERRAFORM_GCP --> TFG6[6_agents/<br/>Cloud Run Agents]
-    TERRAFORM_GCP --> TFG7[7_frontend/<br/>Cloud CDN + Storage]
-    TERRAFORM_GCP --> TFG8[8_monitoring/<br/>Cloud Monitoring]
-
     %% Scripts Directory
     SCRIPTS --> S_DEPLOY[deploy.py]
     SCRIPTS --> S_RUN[run_local.py]
     SCRIPTS --> S_DESTROY[destroy.py]
-    SCRIPTS --> S_MULTI[deploy_multi_cloud.py<br/>destroy_multi_cloud.py]
-    SCRIPTS --> S_AWS[AWS_START_STOP/]
-    SCRIPTS --> S_QUICK[QUICKSTART.md<br/>README_MULTI_CLOUD.md]
+    SCRIPTS --> S_AWS[AWS_START_STOP/<br/>Cost Management]
     SCRIPTS --> S_SERVER[start_dev_server.py<br/>stop_dev_server.py]
 
     %% Utilities Directory
@@ -120,18 +102,16 @@ graph TB
     classDef backendStyle fill:#fff3e0,stroke:#f57c00,stroke-width:2px
     classDef frontendStyle fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
     classDef terraformStyle fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    classDef gcpStyle fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
     classDef scriptsStyle fill:#fff9c4,stroke:#f9a825,stroke-width:2px
     classDef docsStyle fill:#fce4ec,stroke:#c2185b,stroke-width:2px
     classDef utilsStyle fill:#e0f2f1,stroke:#00796b,stroke-width:2px
     classDef testingStyle fill:#ffebee,stroke:#c62828,stroke-width:2px
 
     class GUIDES,G_INFO guidesStyle
-    class BACKEND,B_AWS_AGENTS,B_GCP_AGENTS,B_SHARED,B_TESTING,PLANNER,TAGGER,REPORTER,REPORTER_1,CHARTER,RETIREMENT,RESEARCHER,TAGGER_GCP,INGEST,DATABASE,DATABASE_GCP,API,SCHEDULER,TESTS_COMMON backendStyle
+    class BACKEND,B_AGENTS,B_SHARED,B_TESTING,PLANNER,TAGGER,REPORTER,REPORTER_1,CHARTER,RETIREMENT,RESEARCHER,INGEST,DATABASE,API,SCHEDULER,TESTS_COMMON backendStyle
     class FRONTEND,F_PAGES,F_COMPONENTS,F_LIB,F_PUBLIC,F_STYLES,F_TESTING,F_TESTS,F_E2E,F_MOCKS,F_UTILS,F_OUT frontendStyle
     class TERRAFORM_AWS,TF2,TF3,TF4,TF5,TF6,TF7,TF8 terraformStyle
-    class TERRAFORM_GCP,TFG0,TFG1,TFG2,TFG3,TFG4,TFG5,TFG6,TFG7,TFG8 gcpStyle
-    class SCRIPTS,S_DEPLOY,S_RUN,S_DESTROY,S_MULTI,S_AWS,S_QUICK,S_SERVER scriptsStyle
+    class SCRIPTS,S_DEPLOY,S_RUN,S_DESTROY,S_AWS,S_SERVER scriptsStyle
     class DOCS,CLAUDE,CLAUDE_REQS,README,KB_STRUCTURE,KB_PROMPT,TEMPLATE_AWS,TEMPLATE_CONSTRUCT,GITHUB_BP,START_SERVER docsStyle
     class UTILITIES,U_GIT,U_BASH utilsStyle
     class TESTING_GUIDES,TG_GUIDE,TG_IMPL,TG_QUICK testingStyle
@@ -156,7 +136,7 @@ Step-by-step deployment guides for the 8-day course. Start with Guide 1 and prog
 ### 🔧 Backend (Python/uv projects)
 All AI agents and Lambda functions using OpenAI Agents SDK.
 
-**AWS Agents:**
+**AI Agents:**
 - **Planner**: Orchestrator that coordinates other agents
 - **Tagger**: Classifies financial instruments (ETF vs stock)
 - **Reporter**: Analyzes portfolio and generates reports (active version)
@@ -165,13 +145,9 @@ All AI agents and Lambda functions using OpenAI Agents SDK.
 - **Retirement**: Projects retirement scenarios
 - **Researcher**: Autonomous market research (App Runner)
 
-**GCP Agents:**
-- **Tagger_GCP**: GCP Cloud Run version of tagger agent
-
 **Shared Infrastructure:**
 - **Ingest**: Document ingestion Lambda for S3 Vectors
-- **Database**: Shared library for AWS Aurora Data API
-- **Database_GCP**: Shared library for GCP Cloud SQL
+- **Database**: Shared library for Aurora Data API
 - **API**: FastAPI backend for frontend integration
 - **Scheduler**: Job scheduling and task management
 
@@ -190,10 +166,10 @@ All AI agents and Lambda functions using OpenAI Agents SDK.
 - **__mocks__/**: Test mocks for external dependencies
 - **test-utils/**: Shared testing utilities and custom renderers
 
-### 🏗️ Terraform AWS (Infrastructure as Code)
+### 🏗️ Terraform (Infrastructure as Code)
 Each directory is **independent** with its own state file and tfvars.
 
-**AWS Deployment Order:**
+**Deployment Order:**
 1. 2_sagemaker (SageMaker Embedding endpoint)
 2. 3_ingestion (S3 Vectors + Lambda)
 3. 4_researcher (App Runner)
@@ -202,31 +178,16 @@ Each directory is **independent** with its own state file and tfvars.
 6. 7_frontend (CloudFront + S3 + API Gateway)
 7. 8_enterprise (CloudWatch Monitoring)
 
-### 🌐 Terraform GCP (Infrastructure as Code)
-Multi-cloud support with GCP deployment.
-
-**GCP Deployment Order:**
-1. 0_foundation (GCP Project and IAM setup)
-2. 1_network (VPC, subnets, firewall rules)
-3. 2_embeddings (Vertex AI embedding endpoint)
-4. 3_ingestion (Cloud Storage + Cloud Functions)
-5. 4_researcher (Cloud Run service)
-6. 5_database (Cloud SQL PostgreSQL)
-7. 6_agents (Cloud Run agents)
-8. 7_frontend (Cloud CDN + Cloud Storage)
-9. 8_monitoring (Cloud Monitoring dashboards)
-
 ### 🛠️ Scripts
 - **deploy.py**: Frontend deployment automation
 - **run_local.py**: Local development testing
 - **destroy.py**: Cleanup and resource destruction
-- **deploy_multi_cloud.py**: Multi-cloud deployment orchestration
-- **destroy_multi_cloud.py**: Multi-cloud cleanup
 - **start_dev_server.py**: Start local development server
 - **stop_dev_server.py**: Stop local development server
 - **AWS_START_STOP/**: AWS cost management utilities
-- **QUICKSTART.md**: Quick start guide
-- **README_MULTI_CLOUD.md**: Multi-cloud deployment guide
+  - minimize_costs.py: Reduce AWS costs by destroying expensive resources
+  - restart_infrastructure.py: Restore AWS infrastructure
+  - deployment_status.py: Check current deployment status
 
 ### 🔧 KB_github_UTILITIES
 Universal Git workflow tools.
@@ -249,7 +210,7 @@ backend/
 ├── tests_common/              # Shared testing utilities
 │   ├── __init__.py           # Package initialization
 │   ├── fixtures.py           # Reusable test fixtures
-│   ├── mocks.py              # Mock objects for AWS/GCP services
+│   ├── mocks.py              # Mock objects for AWS services
 │   └── assertions.py         # Custom test assertions
 │
 ├── test_simple.py            # Integration tests (mock mode)
@@ -259,7 +220,7 @@ backend/
 │
 └── */                        # Each agent directory contains:
     ├── test_simple.py        # Local tests with mocks
-    └── test_full.py          # AWS/GCP deployment tests
+    └── test_full.py          # AWS deployment tests
 ```
 
 **Agent Test Files (23 total):**
@@ -272,16 +233,15 @@ backend/
 - `backend/researcher/test_local.py`, `test_research.py`
 - `backend/ingest/test_ingest_s3vectors.py`, `test_search_s3vectors.py`
 - `backend/database/test_data_api.py`
-- `backend/database_gcp/test_client.py`
 
 **Test Types:**
 1. **test_simple.py**: Local testing with MOCK_LAMBDAS=true
-   - Fast execution (no AWS/GCP calls)
+   - Fast execution (no AWS calls)
    - Uses mocked services from `tests_common/mocks.py`
    - Tests agent logic and prompts
 
 2. **test_full.py**: Deployment testing
-   - Real AWS Lambda/GCP Cloud Run invocations
+   - Real AWS Lambda invocations
    - Tests actual cloud infrastructure
    - Requires deployed resources
 
@@ -368,7 +328,7 @@ cd backend && uv run pytest
 # Run specific agent tests (local)
 cd backend/planner && uv run pytest test_simple.py
 
-# Run deployment tests (requires AWS/GCP)
+# Run deployment tests (requires AWS)
 cd backend/planner && uv run pytest test_full.py
 
 # Run with coverage
@@ -407,7 +367,7 @@ graph TB
         TESTS_COMMON[tests_common/<br/>Shared Utilities]
 
         PYTEST --> SIMPLE[test_simple.py<br/>Local + Mocks]
-        PYTEST --> FULL[test_full.py<br/>AWS/GCP Deployed]
+        PYTEST --> FULL[test_full.py<br/>AWS Deployed]
         PYTEST --> INTEGRATION[Integration Tests]
         PYTEST --> SCALE[Scale Tests]
 
@@ -441,7 +401,7 @@ graph TB
         FRONTEND_CODE[Frontend Code] --> UNIT
         FRONTEND_CODE --> E2E
 
-        FULL --> AWS_DEPLOY[AWS/GCP<br/>Deployed Resources]
+        FULL --> AWS_DEPLOY[AWS<br/>Deployed Resources]
         E2E --> BROWSER[Real Browser<br/>Automation]
     end
 
@@ -482,14 +442,12 @@ graph TB
 ```
 📄 .env (root)                         # Backend configuration
 📄 frontend/.env.local                 # Clerk authentication
-📄 backend/*/.env.example              # Agent-specific configs (AWS)
-📄 backend/tagger_gcp/.env.example     # GCP-specific configs
+📄 backend/*/.env.example              # Agent-specific configs
 ```
 
 ### Terraform Variables
 ```
-📄 terraform/*/terraform.tfvars        # AWS - Must create from .example
-📄 terraform_GCP/*/terraform.tfvars    # GCP - Must create from .example
+📄 terraform/*/terraform.tfvars        # Must create from .example
 ```
 
 ### Package Management
@@ -624,13 +582,10 @@ graph LR
 
 ### AI/ML
 - **OpenAI Agents SDK**: Multi-agent orchestration framework
-- **AWS Bedrock**: Nova Pro LLM for AWS deployments
-- **GCP Vertex AI**: Gemini models for GCP deployments
-- **SageMaker**: HuggingFace embeddings (all-MiniLM-L6-v2) - AWS
-- **Vertex AI Embeddings**: Text embedding service - GCP
-- **S3 Vectors**: Cost-effective vector storage - AWS
-- **Cloud Storage**: Vector storage - GCP
-- **LiteLLM**: Universal LLM interface (AWS Bedrock, GCP Vertex AI)
+- **AWS Bedrock**: Nova Pro LLM
+- **SageMaker**: HuggingFace embeddings (all-MiniLM-L6-v2)
+- **S3 Vectors**: Cost-effective vector storage
+- **LiteLLM**: Universal LLM interface for AWS Bedrock
 
 ### Backend
 - **Python 3.12**: All backend code
@@ -660,21 +615,9 @@ graph LR
 - **Secrets Manager**: Secure credential storage
 - **ECR**: Container registry
 
-### GCP Infrastructure
-- **Cloud Run**: Containerized serverless agents
-- **Cloud SQL**: PostgreSQL database
-- **Cloud Storage**: Object storage and static hosting
-- **Cloud CDN**: Content delivery network
-- **Cloud Functions**: Event-driven functions
-- **Cloud Monitoring**: Logs and metrics
-- **IAM**: Identity and access management
-- **Secret Manager**: Secure credential storage
-- **Artifact Registry**: Container registry
-- **VPC**: Virtual private cloud networking
-
 ### Infrastructure as Code
-- **Terraform**: Multi-cloud infrastructure provisioning
-- **Docker**: Container images for Lambda and Cloud Run
+- **Terraform**: AWS infrastructure provisioning
+- **Docker**: Container images for Lambda
 - **Docker Buildx**: Multi-platform builds (linux/amd64)
 
 ### Development Tools
@@ -684,8 +627,7 @@ graph LR
 - **Python virtual environments**: Isolated dependencies via uv
 
 ### Observability & Monitoring
-- **CloudWatch (AWS)**: Logs, metrics, dashboards, alarms
-- **Cloud Monitoring (GCP)**: Logs, metrics, dashboards
+- **CloudWatch**: Logs, metrics, dashboards, alarms
 - **LangFuse**: Agent tracing and observability
 - **OpenAI Agents trace()**: Built-in agent execution tracing
 
@@ -698,62 +640,8 @@ graph LR
 
 ---
 
-## Multi-Cloud Architecture
-
-This project supports **dual deployment** to both AWS and GCP:
-
-```mermaid
-graph TB
-    subgraph "AWS Deployment"
-        AWS_FE[CloudFront + S3]
-        AWS_API[API Gateway + Lambda]
-        AWS_AGENTS[Lambda Agents]
-        AWS_DB[(Aurora Serverless)]
-        AWS_VEC[S3 Vectors]
-        AWS_EMB[SageMaker Embeddings]
-        AWS_LLM[Bedrock Nova Pro]
-    end
-
-    subgraph "GCP Deployment"
-        GCP_FE[Cloud CDN + Storage]
-        GCP_API[Cloud Run API]
-        GCP_AGENTS[Cloud Run Agents]
-        GCP_DB[(Cloud SQL)]
-        GCP_VEC[Cloud Storage Vectors]
-        GCP_EMB[Vertex AI Embeddings]
-        GCP_LLM[Vertex AI Gemini]
-    end
-
-    subgraph "Shared Components"
-        FRONTEND[NextJS Frontend]
-        CLERK[Clerk Auth]
-        CODE[Agent Code<br/>OpenAI SDK]
-    end
-
-    FRONTEND --> AWS_FE
-    FRONTEND --> GCP_FE
-    CLERK --> AWS_API
-    CLERK --> GCP_API
-    CODE --> AWS_AGENTS
-    CODE --> GCP_AGENTS
-
-    classDef awsStyle fill:#ff9900,stroke:#232f3e,color:#fff
-    classDef gcpStyle fill:#4285f4,stroke:#1a73e8,color:#fff
-    classDef sharedStyle fill:#10b981,stroke:#059669,color:#fff
-
-    class AWS_FE,AWS_API,AWS_AGENTS,AWS_DB,AWS_VEC,AWS_EMB,AWS_LLM awsStyle
-    class GCP_FE,GCP_API,GCP_AGENTS,GCP_DB,GCP_VEC,GCP_EMB,GCP_LLM gcpStyle
-    class FRONTEND,CLERK,CODE sharedStyle
-```
-
-### Multi-Cloud Benefits
-- **Cost optimization**: Choose the most cost-effective cloud per region
-- **Redundancy**: Failover between cloud providers
-- **Vendor flexibility**: Avoid vendor lock-in
-- **Learning**: Gain experience with both major clouds
-- **Regional optimization**: Use AWS in some regions, GCP in others
-
----
-
 *Last Updated: November 2025*
-*Project Version: Multi-Cloud Edition*
+*Project Version: AWS Edition*
+
+**Note**: This is the AWS-only version of Alex. For GCP deployment, see the alex-gcp repository.
+For migration information and repository split details, see MIGRATION.md.
