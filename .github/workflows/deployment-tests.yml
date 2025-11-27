@@ -1,0 +1,168 @@
+name: Deployment Tests (AWS)
+
+on:
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:  # Manual trigger option
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  AURORA_CLUSTER_ARN: ${{ secrets.AURORA_CLUSTER_ARN }}
+  AURORA_SECRET_ARN: ${{ secrets.AURORA_SECRET_ARN }}
+  AURORA_DATABASE: ${{ secrets.AURORA_DATABASE }}
+  SQS_QUEUE_URL: ${{ secrets.SQS_QUEUE_URL }}
+  BEDROCK_MODEL_ID: ${{ secrets.BEDROCK_MODEL_ID }}
+  BEDROCK_REGION: ${{ secrets.BEDROCK_REGION }}
+  SAGEMAKER_ENDPOINT: ${{ secrets.SAGEMAKER_ENDPOINT }}
+  VECTOR_BUCKET: ${{ secrets.VECTOR_BUCKET }}
+
+jobs:
+  deployment-tests:
+    name: Deploy Test - ${{ matrix.agent }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        agent:
+          - planner
+          - tagger
+          - reporter
+          - charter
+          - retirement
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend/${{ matrix.agent }}
+          uv sync
+
+      - name: Run deployment tests
+        run: |
+          cd backend/${{ matrix.agent }}
+          uv run pytest test_full.py -v --tb=short
+        env:
+          AWS_REGION_NAME: ${{ secrets.BEDROCK_REGION }}
+
+      - name: Fetch CloudWatch logs on failure
+        if: failure()
+        run: |
+          aws logs tail /aws/lambda/alex-${{ matrix.agent }} --since 30m --format short > ${{ matrix.agent }}-logs.txt
+        continue-on-error: true
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudwatch-logs-${{ matrix.agent }}
+          path: ${{ matrix.agent }}-logs.txt
+          retention-days: 7
+
+  database-test:
+    name: Deploy Test - Database
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend/database
+          uv sync
+
+      - name: Run Data API test
+        run: |
+          cd backend/database
+          uv run pytest test_data_api.py -v
+
+  ingest-test:
+    name: Deploy Test - Ingest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd backend/ingest
+          uv sync
+
+      - name: Run S3 Vectors tests
+        run: |
+          cd backend/ingest
+          uv run pytest test_ingest_s3vectors.py test_search_s3vectors.py -v
+
+  deployment-summary:
+    name: Deployment Test Summary
+    runs-on: ubuntu-latest
+    needs: [deployment-tests, database-test, ingest-test]
+    if: always()
+
+    steps:
+      - name: Check results
+        run: |
+          echo "Agent tests: ${{ needs.deployment-tests.result }}"
+          echo "Database test: ${{ needs.database-test.result }}"
+          echo "Ingest test: ${{ needs.ingest-test.result }}"
+
+          if [ "${{ needs.deployment-tests.result }}" != "success" ] || \
+             [ "${{ needs.database-test.result }}" != "success" ] || \
+             [ "${{ needs.ingest-test.result }}" != "success" ]; then
+            echo "❌ Some deployment tests failed!"
+            exit 1
+          fi
+
+          echo "✅ All deployment tests passed!"

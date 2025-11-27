@@ -1,5 +1,8 @@
 # Alex - the Agentic Learning Equities Explainer
 
+[![Mock Tests](https://github.com/kent_benson/alex/actions/workflows/test.yml/badge.svg)](https://github.com/kent_benson/alex/actions/workflows/test.yml)
+[![Deployment Tests](https://github.com/kent_benson/alex/actions/workflows/deployment-tests.yml/badge.svg)](https://github.com/kent_benson/alex/actions/workflows/deployment-tests.yml)
+
 ## Multi-agent Enterprise-Grade SaaS Financial Planner on AWS
 
 ![Course Image](assets/alex.png)

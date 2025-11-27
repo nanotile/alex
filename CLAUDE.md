@@ -77,6 +77,33 @@ cd terraform/<X_directory> && terraform output
 cd terraform/<X_directory> && terraform destroy
 ```
 
+### ARN Management (Infrastructure Sync)
+
+```bash
+# Sync ARNs after infrastructure changes (semi-automatic with prompts)
+uv run scripts/sync_arns.py
+
+# Auto-sync without confirmation (for automation)
+uv run scripts/sync_arns.py --auto
+
+# Preview changes without modifying files
+uv run scripts/sync_arns.py --dry-run
+
+# Check for ARN mismatches (troubleshooting)
+uv run scripts/verify_arns.py
+```
+
+**When to Use:**
+- After deploying/recreating database (Guide 5)
+- After destroying and recreating any infrastructure
+- When debugging "AccessDenied" or "NotAuthorized" errors
+- Before deploying agents (Guide 6)
+
+**Why This Matters:**
+- AURORA_SECRET_ARN has a random 6-character suffix that changes every time you recreate the database
+- If your code references an old ARN, you'll get authorization errors
+- The sync script eliminates manual copy-paste errors across `.env` and `terraform.tfvars` files
+
 ### Git Operations (Use Project Utilities)
 
 ```bash
@@ -150,6 +177,83 @@ cd scripts/AWS_START_STOP && uv run restart_infrastructure.py  # Restore resourc
 | 8 | CloudWatch dashboards | Manual verification in AWS Console | ~$5/month |
 
 **Cost Management**: Aurora (Guide 5) is the biggest cost. Destroy it when not actively working: `cd terraform/5_database && terraform destroy`
+
+---
+
+## GitHub Actions CI/CD
+
+### Workflows
+
+**Mock Tests** (`.github/workflows/test.yml`):
+- Runs on every push to main/develop and all PRs
+- Backend: Mock-based tests (fast, no AWS required)
+- Frontend: Jest unit tests + Playwright E2E tests
+- Linting and type checking (non-blocking)
+- Runtime: ~2-5 minutes total
+- No AWS credentials required
+
+**Deployment Tests** (`.github/workflows/deployment-tests.yml`):
+- Runs on every PR commit to main/develop
+- Backend: `test_full.py` tests against real AWS infrastructure
+- Tests against deployed Lambda functions, Aurora database, SQS, Bedrock
+- Runtime: ~10-15 minutes total
+- Requires AWS credentials and deployed infrastructure
+
+### Required GitHub Secrets
+
+Configure in: **Repository Settings → Secrets and variables → Actions**
+
+```
+AWS_ACCESS_KEY_ID           # IAM user for GitHub Actions testing
+AWS_SECRET_ACCESS_KEY       # IAM user credentials
+AWS_ACCOUNT_ID              # Your AWS account ID
+AWS_REGION                  # Primary AWS region (e.g., us-east-1)
+AURORA_CLUSTER_ARN          # Database cluster ARN
+AURORA_SECRET_ARN           # Database credentials ARN
+AURORA_DATABASE             # Database name (alex)
+SQS_QUEUE_URL              # Analysis jobs queue URL
+BEDROCK_MODEL_ID           # Nova Pro model ID (e.g., us.amazon.nova-pro-v1:0)
+BEDROCK_REGION             # Bedrock region (e.g., us-west-2)
+SAGEMAKER_ENDPOINT         # Embedding endpoint name
+VECTOR_BUCKET              # S3 Vectors bucket name
+```
+
+### Getting ARN Values for Secrets
+
+```bash
+# Get database and agent ARNs from Terraform
+cd terraform/5_database && terraform output
+cd terraform/6_agents && terraform output
+
+# Or use the sync script to see current values
+uv run scripts/verify_arns.py
+```
+
+### Updating Secrets After Infrastructure Changes
+
+**IMPORTANT**: If you destroy and recreate infrastructure (especially database), you MUST update GitHub secrets with new ARNs.
+
+**Why**: Aurora secret ARN has a random 6-character suffix that changes every time you recreate the database. Old ARNs will cause "AccessDenied" errors in deployment tests.
+
+**Process**:
+1. Recreate infrastructure: `cd terraform/5_database && terraform apply`
+2. Get new ARNs: `terraform output`
+3. Update GitHub secrets with new `AURORA_CLUSTER_ARN` and `AURORA_SECRET_ARN`
+4. Optionally sync local files: `uv run scripts/sync_arns.py`
+
+### IAM User for GitHub Actions
+
+Create a dedicated IAM user with minimal permissions:
+- User name: `github-actions-testing`
+- Required permissions: Lambda invoke, RDS Data API, SQS, Bedrock, CloudWatch Logs, S3 read
+- See `.github/workflows/README.md` for complete IAM policy template
+
+### Manual Workflow Trigger
+
+Both workflows support manual triggering via GitHub Actions UI:
+1. Go to **Actions** tab in GitHub
+2. Select workflow (Mock Tests or Deployment Tests)
+3. Click **Run workflow** → Select branch → **Run**
 
 ---
 
@@ -720,6 +824,54 @@ The most common issues relate to AWS region choices! Check environment variables
 2. Verify Data API is enabled in RDS console
 3. Run `terraform output` in `5_database` to get correct ARNs
 4. Update environment variables with actual ARNs
+
+### Issue 6: ARN Mismatch / AccessDenied Errors (COMMON AFTER INFRASTRUCTURE RECREATION)
+
+**Symptoms**:
+- "AccessDenied" when Lambda tries to access database
+- "Secret not found" errors despite secret existing
+- Database connection failures with "not authorized" messages
+- Analysis jobs stuck in "pending" status forever
+- Planner Lambda fails with permission errors
+
+**Root Cause**: Configuration files (`.env`, `terraform.tfvars`) contain ARNs from old/destroyed infrastructure. When you recreate the database, AWS generates a new secret with a different 6-character suffix.
+
+**Example:**
+- Old ARN: `arn:aws:secretsmanager:us-east-1:123:secret:alex-aurora-credentials-e9e539bc-v98Ubw`
+- New ARN: `arn:aws:secretsmanager:us-east-1:123:secret:alex-aurora-credentials-012072a2-C8hdps`
+- Notice the suffix changed: `e9e539bc` → `012072a2`
+
+**Diagnosis**:
+```bash
+# Check for ARN mismatches
+uv run scripts/verify_arns.py
+```
+
+Output will show exactly which ARNs don't match:
+```
+❌ ARN Mismatches Detected!
+
+  secret_arn in .env:
+    Terraform: ...secret:alex-db-012072a2-C8hdps
+    Config:    ...secret:alex-db-e9e539bc-v98Ubw  ← OLD SUFFIX!
+```
+
+**Solution:**
+```bash
+# Automatic sync (recommended)
+uv run scripts/sync_arns.py
+
+# Or preview changes first
+uv run scripts/sync_arns.py --dry-run
+
+# After syncing, redeploy agents
+cd terraform/6_agents && terraform apply
+```
+
+**Prevention**: Use `restart_infrastructure.py` which auto-syncs ARNs after database recreation:
+```bash
+uv run scripts/AWS_START_STOP/restart_infrastructure.py --preset daily
+```
 
 ---
 

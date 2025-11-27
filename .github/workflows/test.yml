@@ -1,4 +1,7 @@
-name: Test Suite
+name: Test Suite (Mock Tests)
+
+# This workflow runs fast mock-based tests that don't require AWS infrastructure.
+# For deployment tests against real AWS resources, see deployment-tests.yml
 
 on:
   push:
