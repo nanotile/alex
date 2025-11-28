@@ -240,3 +240,4 @@ terraform/6_agents_old/
 *_old/
 *_not working/
 backend/reporter_1/
+frontend/next.config.ts
