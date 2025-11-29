@@ -10,7 +10,7 @@
 
 ### Code & Structure
 - **Python 3.12** with **uv** package management (NOT conda, NOT pip).
-- **Multi-cloud architecture**: Support both AWS and GCP deployments.
+- **AWS cloud architecture**: Production-grade AWS deployment.
 - **Complete runnable system** delivered each time.
 - **Incremental development** with proper git commits.
 - **All code must be placed in the correct directory** per the project structure (see KB_FILE_STRUCTURE.md).
@@ -38,7 +38,7 @@
   - `templates.py` (prompt templates)
   - `test_simple.py` (local mock tests)
   - `test_full.py` (deployment tests)
-  - `package_docker.py` (Docker packaging for Lambda/Cloud Run)
+  - `package_docker.py` (Docker packaging for Lambda)
 - **Version control** via git commits, not file naming.
 - **No version numbers in filenames** (use git history instead).
 
@@ -50,8 +50,8 @@ For agent files, include a docstring at the top:
 """
 Agent Name: [Planner/Tagger/Reporter/etc.]
 Purpose: [Brief description]
-Cloud: [AWS Lambda / GCP Cloud Run / Both]
-Model: [AWS Bedrock Nova Pro / GCP Vertex AI Gemini]
+Cloud: AWS Lambda
+Model: AWS Bedrock Nova Pro
 Framework: OpenAI Agents SDK
 """
 ```
@@ -61,9 +61,9 @@ Framework: OpenAI Agents SDK
 - API endpoints
 - External dependencies
 
-### Multi-Cloud Development Standards
+### AWS Deployment Architecture
 
-**AWS Deployment:**
+**AWS Services:**
 - Lambda functions for agents
 - Aurora Serverless v2 for database
 - S3 Vectors for embeddings
@@ -71,16 +71,9 @@ Framework: OpenAI Agents SDK
 - Bedrock Nova Pro for LLM
 - CloudWatch for monitoring
 
-**GCP Deployment:**
-- Cloud Run for agents
-- Cloud SQL for database
-- Cloud Storage for vectors
-- Vertex AI for embeddings and LLM (Gemini)
-- Cloud Monitoring for logs/metrics
-
-**Shared Components:**
+**Application Framework:**
 - OpenAI Agents SDK for all agents
-- LiteLLM for unified LLM interface
+- LiteLLM for AWS Bedrock interface
 - Clerk for authentication
 - NextJS for frontend
 
@@ -91,7 +84,7 @@ Framework: OpenAI Agents SDK
 ### Backend Testing
 - **ALWAYS provide both test files:**
   - `test_simple.py`: Mock mode with `MOCK_LAMBDAS=true`
-  - `test_full.py`: Real AWS/GCP deployment tests
+  - `test_full.py`: Real AWS deployment tests
 - **Use shared utilities:**
   - Import from `backend/tests_common/`
   - Fixtures, mocks, assertions
@@ -158,13 +151,6 @@ db = DatabaseClient(cluster_arn, secret_arn, database_name)
 results = await db.execute_sql(query, parameters)
 ```
 
-**GCP Cloud SQL:**
-```python
-from database_gcp import CloudSQLClient
-
-db = CloudSQLClient(connection_name, database_name)
-results = await db.execute_sql(query, parameters)
-```
 
 ---
 
@@ -179,12 +165,10 @@ results = await db.execute_sql(query, parameters)
   - `outputs.tf` (output values)
   - `terraform.tfvars.example` (example configuration)
   - `terraform.tfvars` (actual config, gitignored)
-- **Deployment order:**
-  - AWS: 2→3→4→5→6→7→8
-  - GCP: 0→1→2→3→4→5→6→7→8
+- **Deployment order:** 2→3→4→5→6→7→8
 
 ### Docker Requirements
-- **Platform:** linux/amd64 (required for Lambda and Cloud Run)
+- **Platform:** linux/amd64 (required for Lambda)
 - **Build command:** `docker buildx build --platform linux/amd64`
 - **Packaging:** Use `package_docker.py` scripts in agent directories
 - **Docker must be running:** Before running package scripts
@@ -198,11 +182,6 @@ results = await db.execute_sql(query, parameters)
 - **SageMaker Serverless:** Pay per invocation
 - **Lambda:** Pay per execution
 - **S3 Vectors:** 90% cheaper than OpenSearch
-
-### GCP Cost Optimization
-- **Cloud SQL:** Stop instance when not in use
-- **Cloud Run:** Pay per request
-- **Vertex AI:** Pay per prediction
 
 ### Cleanup Commands
 ```bash
@@ -257,14 +236,14 @@ cd terraform/5_database && terraform destroy  # Biggest savings
 - Fix: Copy `terraform.tfvars.example` to `terraform.tfvars`
 - Fill in all required values
 
-**4. Lambda/Cloud Run Errors**
-- Check: CloudWatch or Cloud Monitoring logs
+**4. Lambda Errors**
+- Check: CloudWatch logs
 - Verify: Environment variables set correctly
 - Test: Locally with `test_simple.py` first
 
 ### Debugging Process
 1. **Reproduce locally** with `test_simple.py`
-2. **Check logs:** CloudWatch/Cloud Monitoring
+2. **Check logs:** CloudWatch
 3. **Verify config:** Environment variables, tfvars
 4. **Test incrementally:** One change at a time
 5. **Check permissions:** IAM roles and policies
@@ -307,7 +286,7 @@ cd terraform/5_database && terraform destroy  # Biggest savings
 
 7. **Test deployment:**
    - `uv run pytest test_full.py`
-   - Check CloudWatch/Cloud Monitoring logs
+   - Check CloudWatch logs
    - Validate end-to-end
 
 8. **Commit changes:**
@@ -358,7 +337,6 @@ cd terraform/5_database && terraform destroy  # Biggest savings
 - **Git:** Version control
 - **Node.js/npm:** Frontend development
 - **AWS CLI:** AWS deployments
-- **gcloud CLI:** GCP deployments
 
 ---
 
@@ -376,7 +354,7 @@ cd terraform/5_database && terraform destroy  # Biggest savings
 - **Cache where appropriate:** Use cacheLife, cacheTag
 - **Batch operations:** Reduce API calls
 - **Async/await:** For concurrent operations
-- **Monitor cold starts:** Lambda/Cloud Run warmup
+- **Monitor cold starts:** Lambda warmup
 
 ---
 
@@ -385,20 +363,19 @@ cd terraform/5_database && terraform destroy  # Biggest savings
 ### Documentation References
 - **OpenAI Agents SDK:** Latest idiomatic patterns
 - **AWS Bedrock:** Nova Pro model documentation
-- **GCP Vertex AI:** Gemini model documentation
 - **LiteLLM:** Universal LLM interface docs
-- **Terraform:** AWS and GCP provider docs
+- **Terraform:** AWS provider docs
 
 ### Getting Help
 - **Check guides first:** `guides/` directory
 - **Review examples:** Existing agent implementations
-- **Check logs:** CloudWatch/Cloud Monitoring
+- **Check logs:** CloudWatch
 - **Ask specific questions:** Include error messages and context
 - **Search codebase:** Use Grep tool for patterns
 
 ---
 
 *Last Updated: November 2025*
-*Project: Alex - Multi-Cloud AI Agent Platform*
+*Project: Alex - AWS AI Agent Platform*
 *Framework: OpenAI Agents SDK*
-*Clouds: AWS + GCP*
+*Cloud: AWS*

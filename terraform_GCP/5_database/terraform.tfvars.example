@@ -1,6 +1,0 @@
-# GCP Project Configuration
-gcp_project = "your-gcp-project-id"
-gcp_region  = "us-central1"
-
-# Cloud Run Service Account (from Module 0 outputs)
-cloudrun_service_account_email = "alex-gcl-cloudrun-sa@your-project.iam.gserviceaccount.com"
