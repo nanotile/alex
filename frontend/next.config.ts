@@ -2,12 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  output: 'export',
-  images: {
-    unoptimized: true
-  },
-  // Disable automatic trailing slash redirect for API routes
-  trailingSlash: false,
+  // NO output: 'export' - allow server-side rendering for development
+  // Configure Turbopack root to fix lockfile warning
+  turbopack: {
+    root: '/home/kent_benson/AWS_projects/alex/frontend'
+  }
 };
 
 export default nextConfig;
