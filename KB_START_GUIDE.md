@@ -27,6 +27,7 @@ Previously, you had to manually:
 1. ✅ Detects VM external IP automatically
 2. ✅ Verifies ARN synchronization (auto-fixes if needed)
 3. ✅ Configures `.env` and `frontend/.env.local` with correct IP
+
 4. ✅ Starts API backend (port 8000)
 5. ✅ Starts Next.js frontend (port 3000)
 6. ✅ Reports comprehensive status

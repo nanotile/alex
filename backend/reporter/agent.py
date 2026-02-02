@@ -133,27 +133,23 @@ async def get_market_insights(
         account_id = sts.get_caller_identity()["Account"]
         bucket = f"alex-vectors-{account_id}"
 
-        # Get embeddings
-        sagemaker_region = os.getenv("DEFAULT_AWS_REGION", "us-east-1")
-        sagemaker = boto3.client("sagemaker-runtime", region_name=sagemaker_region)
-        endpoint_name = os.getenv("SAGEMAKER_ENDPOINT", "alex-embedding-endpoint")
+        # Get embeddings using Bedrock Titan
+        bedrock_region = os.getenv("BEDROCK_REGION", os.getenv("DEFAULT_AWS_REGION", "us-east-1"))
+        bedrock_embedding_model = os.getenv("BEDROCK_EMBEDDING_MODEL", "amazon.titan-embed-text-v2:0")
+        bedrock = boto3.client("bedrock-runtime", region_name=bedrock_region)
         query = f"market analysis {' '.join(symbols[:5])}" if symbols else "market outlook"
 
-        response = sagemaker.invoke_endpoint(
-            EndpointName=endpoint_name,
-            ContentType="application/json",
-            Body=json.dumps({"inputs": query}),
+        response = bedrock.invoke_model(
+            modelId=bedrock_embedding_model,
+            contentType="application/json",
+            body=json.dumps({"inputText": query}),
         )
 
-        result = json.loads(response["Body"].read().decode())
-        # Extract embedding (handle nested arrays)
-        if isinstance(result, list) and result:
-            embedding = result[0][0] if isinstance(result[0], list) else result[0]
-        else:
-            embedding = result
+        result = json.loads(response["body"].read())
+        embedding = result.get("embedding", [])
 
         # Search vectors
-        s3v = boto3.client("s3vectors", region_name=sagemaker_region)
+        s3v = boto3.client("s3vectors", region_name=bedrock_region)
         response = s3v.query_vectors(
             vectorBucketName=bucket,
             indexName="financial-research",

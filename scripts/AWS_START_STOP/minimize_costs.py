@@ -21,6 +21,14 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 
+# Import module definitions
+sys.path.insert(0, str(Path(__file__).parent))
+try:
+    from module_definitions import MODULE_TIMEOUTS
+except ImportError:
+    # Fallback if module_definitions not available
+    MODULE_TIMEOUTS = {}
+
 
 # Cost estimates (monthly) for each terraform module
 COST_ESTIMATES = {
@@ -99,18 +107,50 @@ DESTRUCTION_MODES = {
 }
 
 
-def run_command(cmd: List[str], cwd: Optional[Path] = None, capture_output: bool = False, check: bool = True) -> Optional[str]:
-    """Run a command and optionally capture output."""
-    if capture_output:
-        result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
-        if check and result.returncode != 0:
-            return None
-        return result.stdout.strip()
-    else:
-        result = subprocess.run(cmd, cwd=cwd)
-        if check and result.returncode != 0:
-            return None
-        return "success"
+def run_command(cmd: List[str], cwd: Optional[Path] = None, capture_output: bool = False, check: bool = True, verbose: bool = False, timeout: Optional[int] = None) -> Optional[str]:
+    """
+    Run a command and handle errors properly.
+
+    Args:
+        cmd: Command to run
+        cwd: Working directory
+        capture_output: Capture stdout/stderr
+        check: Check return code
+        verbose: Print full output on errors
+        timeout: Timeout in seconds (None = no timeout)
+
+    Returns:
+        str: stdout if capture_output=True and successful
+        "success": if not capturing output and successful
+        None: if command failed or timed out
+    """
+    try:
+        if capture_output:
+            result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+            if check and result.returncode != 0:
+                print(f"\n❌ Command failed: {' '.join(cmd)}")
+                print(f"   Return code: {result.returncode}")
+                if result.stderr:
+                    print(f"   Error output:")
+                    stderr_lines = result.stderr.strip().split('\n')
+                    for line in stderr_lines[:10]:  # First 10 lines
+                        print(f"     {line}")
+                    if len(stderr_lines) > 10:
+                        print(f"     ... (truncated, {len(stderr_lines)-10} more lines)")
+                if verbose and result.stderr:
+                    print(f"\n   Full error:\n{result.stderr}")
+                return None
+            return result.stdout.strip()
+        else:
+            result = subprocess.run(cmd, cwd=cwd, timeout=timeout)
+            if check and result.returncode != 0:
+                print(f"❌ Command failed with code {result.returncode}: {' '.join(cmd)}")
+                return None
+            return "success"
+    except subprocess.TimeoutExpired:
+        timeout_mins = timeout // 60 if timeout else 0
+        print(f"❌ Command timed out after {timeout_mins} minutes: {' '.join(cmd)}")
+        return None
 
 
 def get_terraform_dir(module: str) -> Path:
@@ -119,7 +159,7 @@ def get_terraform_dir(module: str) -> Path:
 
 
 def check_module_deployed(module: str) -> Tuple[bool, int]:
-    """Check if a terraform module is deployed and count resources."""
+    """Check if a terraform module is deployed with validation."""
     terraform_dir = get_terraform_dir(module)
     state_file = terraform_dir / "terraform.tfstate"
 
@@ -129,9 +169,28 @@ def check_module_deployed(module: str) -> Tuple[bool, int]:
     try:
         with open(state_file, 'r') as f:
             state = json.load(f)
-            resources = state.get("resources", [])
-            return len(resources) > 0, len(resources)
-    except (json.JSONDecodeError, KeyError):
+
+        # Validate state structure
+        if not isinstance(state, dict):
+            print(f"⚠️  {module}: Invalid state file format")
+            return False, 0
+
+        # Check terraform version (basic validation)
+        if "version" not in state:
+            print(f"⚠️  {module}: State file missing version field")
+            return False, 0
+
+        resources = state.get("resources", [])
+
+        # Empty state is suspicious
+        if len(resources) == 0 and state.get("version", 0) > 0:
+            print(f"⚠️  {module}: State file exists but has 0 resources")
+            return False, 0
+
+        return len(resources) > 0, len(resources)
+
+    except (json.JSONDecodeError, KeyError) as e:
+        print(f"⚠️  {module}: Corrupted state file ({e})")
         return False, 0
 
 
@@ -218,17 +277,24 @@ def print_savings_analysis(mode: str):
 
 
 def save_state(modules_destroyed: List[str]):
-    """Save the state of destroyed modules for later restoration."""
+    """Save the state of destroyed modules for later restoration with atomic write."""
     state_file = Path(__file__).parent / ".last_state.json"
     state = {
         "timestamp": datetime.now().isoformat(),
         "destroyed_modules": modules_destroyed,
     }
 
-    with open(state_file, 'w') as f:
-        json.dump(state, f, indent=2)
-
-    print(f"\n💾 State saved to {state_file}")
+    # Atomic write: write to temp file, then rename
+    temp_file = state_file.with_suffix('.tmp')
+    try:
+        with open(temp_file, 'w') as f:
+            json.dump(state, f, indent=2)
+        temp_file.replace(state_file)  # Atomic on POSIX systems
+        print(f"\n💾 State saved to {state_file}")
+    except Exception as e:
+        print(f"\n❌ Failed to save state file: {e}")
+        if temp_file.exists():
+            temp_file.unlink()
 
 
 def destroy_module(module: str, auto_approve: bool = False) -> bool:
@@ -256,8 +322,12 @@ def destroy_module(module: str, auto_approve: bool = False) -> bool:
     if auto_approve:
         cmd.append("-auto-approve")
 
-    print(f"   Running: {' '.join(cmd)}")
-    result = run_command(cmd, cwd=terraform_dir, check=False)
+    # Get timeout for this module (default 10 minutes)
+    timeout = MODULE_TIMEOUTS.get(module, 600)
+    timeout_mins = timeout // 60
+
+    print(f"   Running: {' '.join(cmd)} (timeout: {timeout_mins}min)")
+    result = run_command(cmd, cwd=terraform_dir, check=False, timeout=timeout)
 
     if result:
         print(f"   ✅ Module {module} destroyed successfully")

@@ -1,6 +1,7 @@
 """
 Test script for ingesting documents directly to S3 Vectors.
 This bypasses API Gateway and tests the S3 Vectors service directly.
+Uses AWS Bedrock Titan Embeddings for vector generation.
 """
 
 import os
@@ -17,7 +18,8 @@ load_dotenv(env_path, override=True)
 
 # Get configuration
 VECTOR_BUCKET = os.getenv('VECTOR_BUCKET')
-SAGEMAKER_ENDPOINT = os.getenv('SAGEMAKER_ENDPOINT', 'alex-embedding-endpoint')
+BEDROCK_EMBEDDING_MODEL = os.getenv('BEDROCK_EMBEDDING_MODEL', 'amazon.titan-embed-text-v2:0')
+BEDROCK_REGION = os.getenv('BEDROCK_REGION', os.getenv('AWS_REGION', 'us-east-1'))
 INDEX_NAME = 'financial-research'
 
 if not VECTOR_BUCKET:
@@ -26,28 +28,22 @@ if not VECTOR_BUCKET:
 
 # Initialize AWS clients
 s3_vectors = boto3.client('s3vectors')
-sagemaker_runtime = boto3.client('sagemaker-runtime')
+bedrock_runtime = boto3.client('bedrock-runtime', region_name=BEDROCK_REGION)
 
 def get_embedding(text):
-    """Get embedding vector from SageMaker endpoint."""
-    response = sagemaker_runtime.invoke_endpoint(
-        EndpointName=SAGEMAKER_ENDPOINT,
-        ContentType='application/json',
-        Body=json.dumps({'inputs': text})
+    """Get embedding vector from AWS Bedrock Titan Embeddings."""
+    response = bedrock_runtime.invoke_model(
+        modelId=BEDROCK_EMBEDDING_MODEL,
+        contentType='application/json',
+        body=json.dumps({'inputText': text})
     )
-    
-    result = json.loads(response['Body'].read().decode())
-    # HuggingFace returns nested array [[[embedding]]], extract the actual embedding
-    if isinstance(result, list) and len(result) > 0:
-        if isinstance(result[0], list) and len(result[0]) > 0:
-            if isinstance(result[0][0], list):
-                return result[0][0]  # Extract from [[[embedding]]]
-            return result[0]  # Extract from [[embedding]]
-    return result  # Return as-is if not nested
+
+    result = json.loads(response['body'].read())
+    return result.get('embedding', [])
 
 def ingest_document(text, metadata=None):
     """Ingest a document directly to S3 Vectors."""
-    # Get embedding from SageMaker
+    # Get embedding from Bedrock
     print(f"Getting embedding for text: {text[:100]}...")
     embedding = get_embedding(text)
     
@@ -79,7 +75,7 @@ def main():
     print("=" * 60)
     print(f"Bucket: {VECTOR_BUCKET}")
     print(f"Index: {INDEX_NAME}")
-    print(f"Embedding Model: {SAGEMAKER_ENDPOINT}")
+    print(f"Embedding Model: {BEDROCK_EMBEDDING_MODEL}")
     print()
     
     # Test documents

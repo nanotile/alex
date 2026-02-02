@@ -25,7 +25,6 @@ uv run scripts/minimize_costs.py --status
 Destroy Aurora + App Runner to save $116/month:
 ```bash
 uv run scripts/minimize_costs.py --mode shutdown
-```
 
 ### Start of Next Day
 Restore database and agents for development:
@@ -96,7 +95,7 @@ uv run scripts/minimize_costs.py --status
 ## Infrastructure Restart Script
 
 **File:** `scripts/restart_infrastructure.py`
-
+ 
 ### Preset Configurations
 
 #### Daily Development

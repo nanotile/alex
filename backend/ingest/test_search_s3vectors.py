@@ -1,6 +1,7 @@
 """
 Test script for searching S3 Vectors.
 This demonstrates how to search the indexed documents.
+Uses AWS Bedrock Titan Embeddings for query vector generation.
 """
 
 import os
@@ -15,7 +16,8 @@ load_dotenv(env_path, override=True)
 
 # Get configuration
 VECTOR_BUCKET = os.getenv('VECTOR_BUCKET')
-SAGEMAKER_ENDPOINT = os.getenv('SAGEMAKER_ENDPOINT', 'alex-embedding-endpoint')
+BEDROCK_EMBEDDING_MODEL = os.getenv('BEDROCK_EMBEDDING_MODEL', 'amazon.titan-embed-text-v2:0')
+BEDROCK_REGION = os.getenv('BEDROCK_REGION', os.getenv('AWS_REGION', 'us-east-1'))
 INDEX_NAME = 'financial-research'
 
 if not VECTOR_BUCKET:
@@ -24,24 +26,18 @@ if not VECTOR_BUCKET:
 
 # Initialize AWS clients
 s3_vectors = boto3.client('s3vectors')
-sagemaker_runtime = boto3.client('sagemaker-runtime')
+bedrock_runtime = boto3.client('bedrock-runtime', region_name=BEDROCK_REGION)
 
 def get_embedding(text):
-    """Get embedding vector from SageMaker endpoint."""
-    response = sagemaker_runtime.invoke_endpoint(
-        EndpointName=SAGEMAKER_ENDPOINT,
-        ContentType='application/json',
-        Body=json.dumps({'inputs': text})
+    """Get embedding vector from AWS Bedrock Titan Embeddings."""
+    response = bedrock_runtime.invoke_model(
+        modelId=BEDROCK_EMBEDDING_MODEL,
+        contentType='application/json',
+        body=json.dumps({'inputText': text})
     )
-    
-    result = json.loads(response['Body'].read().decode())
-    # HuggingFace returns nested array [[[embedding]]], extract the actual embedding
-    if isinstance(result, list) and len(result) > 0:
-        if isinstance(result[0], list) and len(result[0]) > 0:
-            if isinstance(result[0][0], list):
-                return result[0][0]  # Extract from [[[embedding]]]
-            return result[0]  # Extract from [[embedding]]
-    return result  # Return as-is if not nested
+
+    result = json.loads(response['body'].read())
+    return result.get('embedding', [])
 
 def list_all_vectors():
     """List all vectors in the index."""

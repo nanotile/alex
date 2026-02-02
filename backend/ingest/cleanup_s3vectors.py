@@ -1,6 +1,7 @@
 """
 Clean up S3 Vectors database by removing all test data.
 This script directly accesses S3 Vectors without going through API Gateway.
+Uses AWS Bedrock Titan Embeddings for query vector generation.
 """
 
 import os
@@ -15,14 +16,17 @@ load_dotenv(env_path, override=True)
 
 # Get configuration
 VECTOR_BUCKET = os.getenv('VECTOR_BUCKET')
+BEDROCK_EMBEDDING_MODEL = os.getenv('BEDROCK_EMBEDDING_MODEL', 'amazon.titan-embed-text-v2:0')
+BEDROCK_REGION = os.getenv('BEDROCK_REGION', os.getenv('AWS_REGION', 'us-east-1'))
 INDEX_NAME = 'financial-research'
 
 if not VECTOR_BUCKET:
     print("Error: VECTOR_BUCKET not found in .env")
     exit(1)
 
-# Initialize S3 Vectors client
+# Initialize AWS clients
 s3_vectors = boto3.client('s3vectors')
+bedrock_runtime = boto3.client('bedrock-runtime', region_name=BEDROCK_REGION)
 
 def delete_all_vectors():
     """Delete all vectors from the index."""
@@ -30,26 +34,22 @@ def delete_all_vectors():
     print(f"Bucket: {VECTOR_BUCKET}")
     print(f"Index: {INDEX_NAME}")
     print()
-    
+
     deleted_count = 0
-    
+
     try:
         # S3 Vectors doesn't have a list operation, so we need to search broadly
         print("Searching for vectors to delete...")
-        
-        # Get a real embedding for a generic search term
-        sagemaker_runtime = boto3.client('sagemaker-runtime')
-        SAGEMAKER_ENDPOINT = os.getenv('SAGEMAKER_ENDPOINT', 'alex-embedding-endpoint')
-        
-        response = sagemaker_runtime.invoke_endpoint(
-            EndpointName=SAGEMAKER_ENDPOINT,
-            ContentType='application/json',
-            Body='{"inputs": "document"}'
+
+        # Get a real embedding for a generic search term using Bedrock
+        response = bedrock_runtime.invoke_model(
+            modelId=BEDROCK_EMBEDDING_MODEL,
+            contentType='application/json',
+            body=json.dumps({'inputText': 'document'})
         )
-        
-        result = json.loads(response['Body'].read().decode())
-        # Extract from nested array [[[embedding]]]
-        dummy_vector = result[0][0]
+
+        result = json.loads(response['body'].read())
+        dummy_vector = result.get('embedding', [])
         
         # S3 Vectors limits topK to 30, so we need to loop
         all_vectors = []

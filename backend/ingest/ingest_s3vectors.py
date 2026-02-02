@@ -1,5 +1,6 @@
 """
 Lambda function for ingesting text into S3 Vectors with embeddings.
+Uses AWS Bedrock Titan Embeddings for vector generation.
 """
 
 import json
@@ -10,30 +11,25 @@ import uuid
 
 # Environment variables
 VECTOR_BUCKET = os.environ.get('VECTOR_BUCKET', 'alex-vectors')
-SAGEMAKER_ENDPOINT = os.environ.get('SAGEMAKER_ENDPOINT')
+BEDROCK_EMBEDDING_MODEL = os.environ.get('BEDROCK_EMBEDDING_MODEL', 'amazon.titan-embed-text-v2:0')
+BEDROCK_REGION = os.environ.get('BEDROCK_REGION', os.environ.get('AWS_REGION', 'us-east-1'))
 INDEX_NAME = os.environ.get('INDEX_NAME', 'financial-research')
 
 # Initialize AWS clients
-sagemaker_runtime = boto3.client('sagemaker-runtime')
+bedrock_runtime = boto3.client('bedrock-runtime', region_name=BEDROCK_REGION)
 s3_vectors = boto3.client('s3vectors')
 
 
 def get_embedding(text):
-    """Get embedding vector from SageMaker endpoint."""
-    response = sagemaker_runtime.invoke_endpoint(
-        EndpointName=SAGEMAKER_ENDPOINT,
-        ContentType='application/json',
-        Body=json.dumps({'inputs': text})
+    """Get embedding vector from AWS Bedrock Titan Embeddings."""
+    response = bedrock_runtime.invoke_model(
+        modelId=BEDROCK_EMBEDDING_MODEL,
+        contentType='application/json',
+        body=json.dumps({'inputText': text})
     )
-    
-    result = json.loads(response['Body'].read().decode())
-    # HuggingFace returns nested array [[[embedding]]], extract the actual embedding
-    if isinstance(result, list) and len(result) > 0:
-        if isinstance(result[0], list) and len(result[0]) > 0:
-            if isinstance(result[0][0], list):
-                return result[0][0]  # Extract from [[[embedding]]]
-            return result[0]  # Extract from [[embedding]]
-    return result  # Return as-is if not nested
+
+    result = json.loads(response['body'].read())
+    return result.get('embedding', [])
 
 
 def lambda_handler(event, context):
@@ -64,7 +60,7 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'Missing required field: text'})
             }
         
-        # Get embedding from SageMaker
+        # Get embedding from Bedrock
         print(f"Getting embedding for text: {text[:100]}...")
         embedding = get_embedding(text)
         

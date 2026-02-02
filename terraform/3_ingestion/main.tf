@@ -19,6 +19,11 @@ provider "aws" {
 # Data source for current caller identity
 data "aws_caller_identity" "current" {}
 
+# Local values
+locals {
+  bedrock_region = var.bedrock_region != "" ? var.bedrock_region : var.aws_region
+}
+
 # ========================================
 # S3 Vectors Bucket
 # ========================================
@@ -86,11 +91,11 @@ resource "aws_iam_role" "lambda_role" {
   }
 }
 
-# Lambda policy for S3 Vectors and SageMaker
+# Lambda policy for S3 Vectors and Bedrock
 resource "aws_iam_role_policy" "lambda_policy" {
   name = "alex-ingest-lambda-policy"
   role = aws_iam_role.lambda_role.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -119,9 +124,9 @@ resource "aws_iam_role_policy" "lambda_policy" {
       {
         Effect = "Allow"
         Action = [
-          "sagemaker:InvokeEndpoint"
+          "bedrock:InvokeModel"
         ]
-        Resource = "arn:aws:sagemaker:${var.aws_region}:${data.aws_caller_identity.current.account_id}:endpoint/${var.sagemaker_endpoint_name}"
+        Resource = "arn:aws:bedrock:${local.bedrock_region}::foundation-model/amazon.titan-embed-*"
       },
       {
         Effect = "Allow"
@@ -153,8 +158,10 @@ resource "aws_lambda_function" "ingest" {
   
   environment {
     variables = {
-      VECTOR_BUCKET      = aws_s3_bucket.vectors.id
-      SAGEMAKER_ENDPOINT = var.sagemaker_endpoint_name
+      VECTOR_BUCKET           = aws_s3_bucket.vectors.id
+      BEDROCK_EMBEDDING_MODEL = var.bedrock_embedding_model
+      BEDROCK_REGION          = local.bedrock_region
+      AWS_REGION              = var.aws_region
     }
   }
   
