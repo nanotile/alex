@@ -1,1011 +1,168 @@
-@./CLAUDE_CODE_SYSTEM_REQUIREMENTS.md
-@./KB_FILE_STRUCTURE.md
+# CLAUDE.md
 
-# Alex - AI in Production Course Project Guide
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Essential Commands - Quick Reference
+## Project
 
-### Backend Development (Python/uv)
+Alex (Agentic Learning Equities eXplainer) is a multi-agent SaaS financial planning platform deployed on AWS. It's the capstone project for Ed Donner's "AI in Production" Udemy course (Weeks 3-4). The user is a student building Alex incrementally through 8 guides in `guides/` (read these for full context before helping).
 
+## Commands
+
+### Backend (Python/uv) — each agent dir is its own uv project
 ```bash
-# Run local tests with mocks (fast, no AWS required)
-cd backend/<agent-name> && uv run pytest test_simple.py
-
-# Run deployment tests (requires AWS resources)
-cd backend/<agent-name> && uv run pytest test_full.py
-
-# Run specific test
-cd backend/<agent-name> && uv run pytest test_simple.py::test_function_name -v
-
-# Run tests with coverage
-cd backend && uv run pytest --cov=. --cov-report=html
-
-# Package Lambda function for deployment (Docker must be running!)
-cd backend/<agent-name> && uv run package_docker.py
-
-# Add a Python dependency
-cd backend/<agent-name> && uv add <package-name>
-
-# Run a Python script
-cd backend/<agent-name> && uv run script.py
+cd backend/<agent> && uv run pytest test_simple.py          # Local tests with mocks (MOCK_LAMBDAS=true)
+cd backend/<agent> && uv run pytest test_full.py             # Deployment tests (real AWS)
+cd backend/<agent> && uv run pytest test_simple.py::test_fn -v  # Single test
+cd backend/<agent> && uv run package_docker.py               # Package for Lambda (Docker must be running!)
+cd backend/<agent> && uv add <package>                       # Add dependency
 ```
 
-### Frontend Development (NextJS)
-
+### Frontend (NextJS — Pages Router, not App Router)
 ```bash
-# Start development server (localhost:3000)
-cd frontend && npm run dev
-
-# Build for production
-cd frontend && npm run build
-
-# Run unit tests (Jest + React Testing Library)
-cd frontend && npm test
-
-# Run unit tests in watch mode
-cd frontend && npm run test:watch
-
-# Run E2E tests (Playwright)
-cd frontend && npm run test:e2e
-
-# Run E2E tests with UI
-cd frontend && npm run test:e2e:ui
-
-# Lint code
-cd frontend && npm run lint
+cd frontend && npm run dev          # Dev server (localhost:3000)
+cd frontend && npm run build        # Production build
+cd frontend && npm test             # Jest unit tests
+cd frontend && npm run test:e2e     # Playwright E2E tests
+cd frontend && npm run lint         # Lint
 ```
 
-### Terraform (Infrastructure)
-
+### Terraform — each directory is independent with local state
 ```bash
-# IMPORTANT: Always configure terraform.tfvars first!
-# Copy example and edit: cp terraform.tfvars.example terraform.tfvars
-
-# Initialize (first time only per directory)
-cd terraform/<X_directory> && terraform init
-
-# Preview changes
-cd terraform/<X_directory> && terraform plan
-
-# Deploy infrastructure
-cd terraform/<X_directory> && terraform apply
-
-# View outputs (ARNs, URLs, etc.)
-cd terraform/<X_directory> && terraform output
-
-# Destroy resources (cost savings!)
-cd terraform/<X_directory> && terraform destroy
+cd terraform/<N_name> && terraform init     # First time only
+cd terraform/<N_name> && terraform plan     # Preview
+cd terraform/<N_name> && terraform apply    # Deploy
+cd terraform/<N_name> && terraform output   # Get ARNs/URLs
+cd terraform/<N_name> && terraform destroy  # Teardown
 ```
+Each dir needs `terraform.tfvars` copied from `terraform.tfvars.example` and configured before apply.
 
-### ARN Management (Infrastructure Sync)
-
+### ARN Sync (critical after recreating infrastructure)
 ```bash
-# Sync ARNs after infrastructure changes (semi-automatic with prompts)
-uv run scripts/sync_arns.py
-
-# Auto-sync without confirmation (for automation)
-uv run scripts/sync_arns.py --auto
-
-# Preview changes without modifying files
-uv run scripts/sync_arns.py --dry-run
-
-# Check for ARN mismatches (troubleshooting)
-uv run scripts/verify_arns.py
-```
-
-**When to Use:**
-- After deploying/recreating database (Guide 5)
-- After destroying and recreating any infrastructure
-- When debugging "AccessDenied" or "NotAuthorized" errors
-- Before deploying agents (Guide 6)
-
-**Why This Matters:**
-- AURORA_SECRET_ARN has a random 6-character suffix that changes every time you recreate the database
-- If your code references an old ARN, you'll get authorization errors
-- The sync script eliminates manual copy-paste errors across `.env` and `terraform.tfvars` files
-
-### Git Operations (Use Project Utilities)
-
-```bash
-# Create new branch (interactive, auto-pushes to GitHub)
-uv run KB_github_UTILITIES/git_utilities/github_new_branch.py
-
-# Compare branches
-uv run KB_github_UTILITIES/git_utilities/what_has_changed_in_branch.py
-
-# Delete broken branch and start fresh
-uv run KB_github_UTILITIES/git_utilities/burn_it_down_start_new.py
-
-# Delete branches safely
-uv run KB_github_UTILITIES/git_utilities/delete_branches.py
-```
-
-### AWS Debugging
-
-```bash
-# Tail CloudWatch logs for a Lambda
-aws logs tail /aws/lambda/alex-<agent-name> --follow
-
-# Check RDS cluster status
-aws rds describe-db-clusters --db-cluster-identifier alex-cluster
-
-# List Lambda functions
-aws lambda list-functions --query 'Functions[?starts_with(FunctionName, `alex`)].FunctionName'
-
-# Check SageMaker endpoint
-aws sagemaker describe-endpoint --endpoint-name alex-embeddings
-
-# Test API Gateway endpoint
-curl -X POST https://<api-id>.execute-api.<region>.amazonaws.com/prod/analyze \
-  -H "x-api-key: <your-api-key>" \
-  -H "Content-Type: application/json" \
-  -d '{"test": "data"}'
-```
-
-### Multi-Cloud Deployment Scripts
-
-```bash
-# Deploy frontend
-cd scripts && uv run deploy.py
-
-# Run local development
-cd scripts && uv run run_local.py
-
-# Destroy all resources
-cd scripts && uv run destroy.py
-
-# AWS deployment status and cost management
-cd scripts/AWS_START_STOP && uv run deployment_status.py        # Check what's deployed
-cd scripts/AWS_START_STOP && uv run deployment_status.py --summary  # Quick summary
-cd scripts/AWS_START_STOP && uv run minimize_costs.py          # Destroy expensive resources
-cd scripts/AWS_START_STOP && uv run restart_infrastructure.py  # Restore resources
-```
-
----
-
-## Infrastructure by Guide - Quick Reference
-
-| Guide | Services Deployed | Key Test Command | Cost Impact |
-|-------|-------------------|------------------|-------------|
-| 1 | IAM permissions | Manual verification in AWS Console | Free |
-| 2 | SageMaker Serverless endpoint | Test via Guide 3 ingest | ~$0.20/hr idle |
-| 3 | S3 Vectors, Lambda, API Gateway | `uv run backend/ingest/test_ingest_s3vectors.py` | ~$5/month |
-| 4 | App Runner (Researcher) | `uv run backend/researcher/test_research.py` | ~$5/month |
-| 5 | Aurora Serverless v2 | `uv run backend/database/test_data_api.py` | **~$40/month** |
-| 6 | 5 Lambda agents, SQS | `uv run backend/planner/test_simple.py` | ~$10/month |
-| 7 | CloudFront, S3, API Lambda | `cd frontend && npm run build` | ~$5/month |
-| 8 | CloudWatch dashboards | Manual verification in AWS Console | ~$5/month |
-
-**Cost Management**: Aurora (Guide 5) is the biggest cost. Destroy it when not actively working: `cd terraform/5_database && terraform destroy`
-
----
-
-## GitHub Actions CI/CD
-
-### Workflows
-
-**Mock Tests** (`.github/workflows/test.yml`):
-- Runs on every push to main/develop and all PRs
-- Backend: Mock-based tests (fast, no AWS required)
-- Frontend: Jest unit tests + Playwright E2E tests
-- Linting and type checking (non-blocking)
-- Runtime: ~2-5 minutes total
-- No AWS credentials required
-
-**Deployment Tests** (`.github/workflows/deployment-tests.yml`):
-- Runs on every PR commit to main/develop
-- Backend: `test_full.py` tests against real AWS infrastructure
-- Tests against deployed Lambda functions, Aurora database, SQS, Bedrock
-- Runtime: ~10-15 minutes total
-- Requires AWS credentials and deployed infrastructure
-
-### Required GitHub Secrets
-
-Configure in: **Repository Settings → Secrets and variables → Actions**
-
-```
-AWS_ACCESS_KEY_ID           # IAM user for GitHub Actions testing
-AWS_SECRET_ACCESS_KEY       # IAM user credentials
-AWS_ACCOUNT_ID              # Your AWS account ID
-AWS_REGION                  # Primary AWS region (e.g., us-east-1)
-AURORA_CLUSTER_ARN          # Database cluster ARN
-AURORA_SECRET_ARN           # Database credentials ARN
-AURORA_DATABASE             # Database name (alex)
-SQS_QUEUE_URL              # Analysis jobs queue URL
-BEDROCK_MODEL_ID           # Nova Pro model ID (e.g., us.amazon.nova-pro-v1:0)
-BEDROCK_REGION             # Bedrock region (e.g., us-west-2)
-SAGEMAKER_ENDPOINT         # Embedding endpoint name
-VECTOR_BUCKET              # S3 Vectors bucket name
-```
-
-### Getting ARN Values for Secrets
-
-```bash
-# Get database and agent ARNs from Terraform
-cd terraform/5_database && terraform output
-cd terraform/6_agents && terraform output
-
-# Or use the sync script to see current values
-uv run scripts/verify_arns.py
-```
-
-### Updating Secrets After Infrastructure Changes
-
-**IMPORTANT**: If you destroy and recreate infrastructure (especially database), you MUST update GitHub secrets with new ARNs.
-
-**Why**: Aurora secret ARN has a random 6-character suffix that changes every time you recreate the database. Old ARNs will cause "AccessDenied" errors in deployment tests.
-
-**Process**:
-1. Recreate infrastructure: `cd terraform/5_database && terraform apply`
-2. Get new ARNs: `terraform output`
-3. Update GitHub secrets with new `AURORA_CLUSTER_ARN` and `AURORA_SECRET_ARN`
-4. Optionally sync local files: `uv run scripts/sync_arns.py`
-
-### IAM User for GitHub Actions
-
-Create a dedicated IAM user with minimal permissions:
-- User name: `github-actions-testing`
-- Required permissions: Lambda invoke, RDS Data API, SQS, Bedrock, CloudWatch Logs, S3 read
-- See `.github/workflows/README.md` for complete IAM policy template
-
-### Manual Workflow Trigger
-
-Both workflows support manual triggering via GitHub Actions UI:
-1. Go to **Actions** tab in GitHub
-2. Select workflow (Mock Tests or Deployment Tests)
-3. Click **Run workflow** → Select branch → **Run**
-
----
-
-## Project Overview
-
-**Alex** (Agentic Learning Equities eXplainer) is a multi-agent enterprise-grade SaaS financial planning platform. This is the capstone project for Weeks 3 and 4 of the "AI in Production" course taught by Ed Donner on Udemy that deploys Agent solutions to production.
-
-The user is a student on the course. You are working with the user to help them build Alex successfully. The user is working in Cursor (the VS Code fork), and they might be on a Windows PC, a Mac (intel or Apple silicon) or a Linux machine. All python code is run with uv and there are uv projects in every directory that needs it. The student is familiar with AWS services (Lambda, App Runner, Cloudfront) and has been introduced to Terraform, uv, NextJS and docker. They have budget alerts set, but they should still regularly check the billing screens in AWS console to keep a close watch on costs.
-
-The student has an AWS root user, and also an IAM user called "aiengineer" with permissions. They have run `aws configure` and should be signed in as the aiengineer user with their default region.
-
-### What Students Will Build
-
-Students will deploy a complete production AI system featuring:
-- **Multi-agent collaboration**: 5 specialized AI agents working together via orchestration
-- **Serverless architecture**: Lambda, Aurora Serverless v2, App Runner, API Gateway, SQS
-- **Cost-optimized vector storage**: S3 Vectors (90% cheaper than OpenSearch)
-- **Real-time financial analysis**: Portfolio management, retirement projections, market research
-- **Production-grade practices**: Observability, guardrails, security, monitoring
-- **Full-stack application**: NextJS React frontend with Clerk authentication
-
-### Learning Objectives
-
-By completing this project, students will:
-1. Deploy and manage production AI infrastructure on AWS
-2. Implement multi-agent systems using the OpenAI Agents SDK
-3. Integrate AWS Bedrock (with Nova Pro model) for LLM capabilities
-4. Build cost-effective vector search with S3 Vectors and SageMaker embeddings
-5. Create serverless agent orchestration with SQS and Lambda
-6. Deploy a complete full-stack SaaS application
-7. Implement enterprise features: monitoring, observability, guardrails, security
-
-### Commercial Product
-
-Alex is a SaaS product that provides insights on users' equity portfolios through reports and charts. Alex is integrated with Clerk for user management and the database architecture keeps user data separate.
-
----
-
-## Directory Structure
-
-```
-alex/
-├── guides/              # Step-by-step deployment guides (START HERE)
-│   ├── 1_permissions.md
-│   ├── 2_sagemaker.md
-│   ├── 3_ingest.md
-│   ├── 4_researcher.md
-│   ├── 5_database.md
-│   ├── 6_agents.md
-│   ├── 7_frontend.md
-│   ├── 8_enterprise.md
-│   ├── architecture.md
-│   └── agent_architecture.md
-│
-├── backend/             # Agent code and Lambda functions
-│   ├── planner/         # Orchestrator agent
-│   ├── tagger/          # Instrument classification agent
-│   ├── reporter/        # Portfolio analysis agent
-│   ├── charter/         # Visualization agent
-│   ├── retirement/      # Retirement projection agent
-│   ├── researcher/      # Market research agent (App Runner)
-│   ├── ingest/          # Document ingestion Lambda
-│   ├── database/        # Shared database library
-│   └── api/             # FastAPI backend for frontend
-│
-├── frontend/            # NextJS React application
-│   ├── pages/
-│   ├── components/
-│   └── lib/
-│
-├── terraform/           # Infrastructure as Code (IMPORTANT: Independent directories)
-│   ├── 2_sagemaker/     # SageMaker embedding endpoint
-│   ├── 3_ingestion/     # S3 Vectors and ingest Lambda
-│   ├── 4_researcher/    # App Runner research service
-│   ├── 5_database/      # Aurora Serverless v2
-│   ├── 6_agents/        # Multi-agent Lambda functions
-│   ├── 7_frontend/      # CloudFront, S3, API Gateway
-│   └── 8_enterprise/    # CloudWatch dashboards and monitoring
-│
-└── scripts/             # Deployment and local development scripts
-    ├── deploy.py        # Frontend deployment
-    ├── run_local.py     # Local development
-    └── destroy.py       # Cleanup script
-```
-
----
-
-## Course Structure: The 8 Guides
-
-**IMPORTANT:** before working with the student, you MUST read all guides in the guides folder, in the correct order (1-8), to fully understand the project.
-
-### Week 3: Research Infrastructure
-
-**Day 3 - Foundations**
-- **Guide 1: AWS Permissions** (1_permissions.md)
-  - Set up IAM permissions for Alex project
-  - Create AlexAccess group with required policies
-  - Configure AWS CLI and credentials
-
-- **Guide 2: SageMaker Deployment** (2_sagemaker.md)
-  - Deploy SageMaker Serverless endpoint for embeddings
-  - Use HuggingFace all-MiniLM-L6-v2 model
-  - Test embedding generation
-  - Understand serverless vs always-on endpoints
-
-**Day 4 - Vector Storage**
-- **Guide 3: Ingestion Pipeline** (3_ingest.md)
-  - Create S3 Vectors bucket (90% cost savings!)
-  - Deploy Lambda function for document ingestion
-  - Set up API Gateway with API key auth
-  - Test document storage and search
-
-**Day 5 - Research Agent**
-- **Guide 4: Researcher Agent** (4_researcher.md)
-  - Deploy autonomous research agent on App Runner
-  - Use AWS Bedrock with Nova Pro model
-  - Integrate Playwright MCP server for web browsing
-  - Set up EventBridge scheduler (optional)
-  - **IMPORTANT**: Update `backend/researcher/server.py` with your region and model
-
-### Week 4: Portfolio Management Platform
-
-**Day 1 - Database**
-- **Guide 5: Database & Infrastructure** (5_database.md)
-  - Deploy Aurora Serverless v2 PostgreSQL
-  - Enable Data API (no VPC complexity!)
-  - Create database schema
-  - Load seed data (22 ETFs)
-  - Set up shared database library
-
-**Day 2 - Agent Orchestra**
-- **Guide 6: AI Agent Orchestra** (6_agents.md)
-  - Deploy 5 Lambda agents (Planner, Tagger, Reporter, Charter, Retirement)
-  - Set up SQS queue for orchestration
-  - Configure agent collaboration patterns
-  - Test local and remote execution
-  - Implement parallel agent processing
-
-**Day 3 - Frontend**
-- **Guide 7: Frontend & API** (7_frontend.md)
-  - Set up Clerk authentication
-  - Deploy NextJS React frontend
-  - Create FastAPI backend on Lambda
-  - Configure CloudFront CDN
-  - Test portfolio management and AI analysis
-
-**Day 4 - Enterprise Features**
-- **Guide 8: Enterprise Grade** (8_enterprise.md)
-  - Implement scalability configurations
-  - Add security layers (WAF, VPC endpoints, GuardDuty)
-  - Set up CloudWatch dashboards and alarms
-  - Implement guardrails and validation
-  - Add explainability features
-  - Configure LangFuse observability
-
-For context, in prior weeks the students learned how to deploy to AWS, the key AWS services like Lambda and App Runner, and using Clerk for user management (needs NextJS to use Pages Router).
-
----
-
-## IMPORTANT: Working with students - approach
-
-Students might be on Windows PC, Mac (Intel or Apple Silicon) or Linux. Always use uv for ALL python code; there are uv projects in every directory. It is not a problem to have a uv project in a subdirectory of another uv project, although uv may show a warning.
-
-Always do `uv add package` and `uv run module.py`, but NEVER `pip install xxx` and NEVER `python -c "code"` or `python -m module.py` or `python script.py`.
-It is VERY IMPORTANT that you do not use the python command outside a uv project.
-Try to lean away from shell scripts or Powershell scripts as they are platform dependent. Heavily favor writing python scripts (via uv) and managing files in the Cursor File Explorer, as this will be clear for all students.
-
-## Working with Students: Core Principles
-
-### Before starting, always read all the guides in the guides folder for the full background
-
-### 1. **Always Establish Context First**
-
-When a student asks for help:
-1. **Ask which guide/day they're on** - This is critical for understanding what infrastructure they have deployed
-2. **Ask what they're trying to accomplish** - Understand the goal before diving into code
-3. **Ask what error or behavior they're seeing** - Get the actual error message, not their interpretation
-
-### 2. **Use Project Git Utilities** 🔧 IMPORTANT
-
-**ALWAYS use the project's git utility scripts instead of raw git commands.**
-
-The project has cross-platform Python git utilities in `/KB_github_UTILITIES/git_utilities/`:
-
-**Available utilities:**
-- `github_new_branch.py` - Create new branch from main (automatically pushes to GitHub)
-- `burn_it_down_start_new.py` - Delete broken branch & start fresh
-- `what_has_changed_in_branch.py` - Compare branches with multiple methods
-- `delete_branches.py` - Delete branches safely with list view
-
-**Usage (from project root):**
-```bash
-# Create new branch (interactive, will prompt for name)
-uv run KB_github_UTILITIES/git_utilities/github_new_branch.py
-
-# Or from the git_utilities directory
-cd KB_github_UTILITIES/git_utilities
-uv run github_new_branch.py
-```
-
-**Why use these instead of raw git commands:**
-- ✅ Cross-platform (Windows/Mac/Linux)
-- ✅ One command does everything (no "local vs remote" confusion)
-- ✅ Better error handling and colored output
-- ✅ Interactive prompts (no need to remember arguments)
-- ✅ Follows project standards
-- ✅ Pushes to GitHub immediately (no forgotten pushes)
-
-**Example workflow:**
-```bash
-# DON'T DO THIS (manual git commands):
-git checkout main
-git pull origin main
-git checkout -b new-feature
-git push -u origin new-feature  # Easy to forget!
-
-# DO THIS (use the utility):
-uv run KB_github_UTILITIES/git_utilities/github_new_branch.py
-# Enter branch name when prompted
-# Done! Branch created and pushed to GitHub automatically
-```
-
-See `/KB_github_UTILITIES/git_utilities/README.md` for complete documentation.
-
-### 3. **Diagnose Before Fixing** ⚠️ MOST IMPORTANT
-
-**DO NOT jump to conclusions and write lots of code before the problem is truly understood.**
-
-Common mistakes to avoid:
-- Writing defensive code with `isinstance()` checks before understanding the root cause
-- Adding try/except blocks that hide the real error
-- Creating workarounds that mask the actual problem
-- Making multiple changes at once (makes debugging impossible)
-
-**Instead, follow this process:**
-1. **Reproduce the issue** - Ask for exact error messages, logs, commands
-2. **Identify root cause** - Use CloudWatch logs, AWS Console, error traces
-3. **Verify understanding** - Explain what you think is happening and confirm with student
-4. **Propose minimal fix** - Change one thing at a time
-5. **Test and verify** - Confirm the fix works before moving on
-
-**Common Root Causes to Check First:**
-
-Before writing any code, check these common issues:
-
-**Docker Desktop Not Running** (Most common with `package_docker.py`)
-- The script will fail with a generic uv warning about nested projects
-- The real issue is Docker isn't running
-- Students often get distracted by the uv warning (this was recently fixed in the script)
-- **Always ask**: "Is Docker Desktop running?"
-
-**AWS Permissions Issues** (Most common overall)
-- Missing IAM policies for specific AWS services
-- Region-specific permissions (especially for Bedrock inference profiles)
-- Inference profiles require permissions for MULTIPLE regions
-- **Check**: IAM policies, AWS region settings, Bedrock model access
-
-**Terraform Variables Not Set**
-- Each terraform directory needs its `terraform.tfvars` file configured
-- Missing or incorrect variables cause cryptic errors
-- **Check**: Does `terraform.tfvars` exist? Are all required variables set?
-
-**AWS Region Mismatches**
-- Bedrock models may only be available in specific regions
-- Nova Pro requires inference profiles
-- Cross-region resource access may need models to have been approved in Bedrock in multiple regions
-- **Check**: Region consistency across configuration files
-
-**Model Access Not Granted**
-- AWS Bedrock requires explicit model access requests
-- Nova Pro is the recommended model (Claude Sonnet has strict rate limits)
-- Access is per-region; inference profiles may require multiple regions to have access
-- **Check**: Bedrock console → Model access
-
-### 4. **Current Model Strategy**
-
-**Use Nova Pro, not Claude Sonnet**
-- Nova Pro (`us.amazon.nova-pro-v1:0` or `eu.amazon.nova-pro-v1:0`) is the recommended model
-- Requires inference profiles for cross-region access
-- Claude Sonnet has too strict rate limits for this project
-- Students need to request access in AWS Bedrock console, and potentially for multiple regions
-
-### 5. **Testing Approach**
-
-Each agent directory has two test files:
-- `test_simple.py` - Local testing with mocks (uses `MOCK_LAMBDAS=true`)
-- `test_full.py` - AWS deployment testing (actual Lambda invocations)
-
-Students should:
-1. Test locally first with `test_simple.py`
-2. Deploy with terraform/packaging
-3. Test deployment with `test_full.py`
-
-### 6. **Help Students Help Themselves**
-
-Encourage students to:
-- Read error messages carefully (especially CloudWatch logs)
-- Check AWS Console to verify resources exist
-- Use `terraform output` to see deployed resource details
-- Test incrementally (don't deploy everything at once)
-- Keep AWS costs in mind (remind them to destroy when not actively working)
-
----
-
-## Terraform Strategy
-
-### Independent Directory Architecture
-
-Each terraform directory (2_sagemaker, 3_ingestion, etc.) is **independent** with:
-- Its own local state file (`terraform.tfstate`)
-- Its own `terraform.tfvars` configuration
-- No dependencies on other terraform directories
-
-**This is intentional** for educational purposes:
-- Students can deploy incrementally, guide by guide
-- State files are local (simpler than remote S3 state)
-- Each part can be destroyed independently
-- No complex state bucket setup needed
-- Infrastructure can be destroyed step by step
-
-### Critical Requirements
-
-**⚠️ Students MUST configure `terraform.tfvars` in each directory before running terraform apply**
-
-Common pattern is to use the Cursor File Explorer to copy terraform.tfvars.example to terraform.tfvars and then change the variables in each directory.
-
-If `terraform.tfvars` is missing or misconfigured:
-- Terraform will use default values (often wrong)
-- Resources may fail to create with cryptic errors
-- Cross-service connections will break
-
-### Terraform State Management
-
-- State files are `.gitignored` automatically
-- Local state means no S3 bucket needed
-- Students can `terraform destroy` each directory independently
-- If a student loses state, they may need to import existing resources or recreate
-
-## Agent strategy - background on OpenAI Agents SDK
-
-Each Agent subdirectory has a common structure with idiomatic patterns.
-
-1. `lambda_handler.py` for the lambda function and running the agent
-2. `agent.py` for the Agent creation and code
-3. `templates.py` for prompts
-
-Alex uses OpenAI Agents SDK. Be sure to always use the latest, idiomatic APIs for OpenAI Agents SDK, recognizing that it is a new framework. While this is already installed in all uv projects, do note that the correct package name is `openai-agents` not `agents`. So if ever creating a new project, you would do `uv add openai-agents` followed by this import statement in the code `from agents import Agent, Runner, trace`.
-
-Alex makes standard use of LiteLLM to connect to Bedrock:
-
-`model = LitellmModel(model=f"bedrock/{model_id}")`
-
-Structured outputs and Tool calling is frequently used, but due to a current limitation with LiteLLM and Bedrock, the same Agent cannot use both Structured Outputs and Tool calling. So each Agent implementation either uses Structured Outputs OR uses Tools, never both.
-
-This is the standard idiomatic approach used in lambda_handler:
-
-```python
-    # Create agent - imported from agents.py
-    model, tools, task = create_agent(job_id, portfolio_data, user_preferences, db)
-    
-    # Run agent
-    with trace("Retirement Agent"):
-        agent = Agent(
-            name="Retirement Specialist",
-            instructions=RETIREMENT_INSTRUCTIONS,
-            model=model,
-            tools=tools
-        )
-        
-        result = await Runner.run(
-            agent,
-            input=task,
-            max_turns=20
-        )
-
-        response = result.final_output
-```
-
-In cases where a Tool needs to know which user is logged in to make the right database call, we use a standard, idomatic approach for passing context in to the tool which works very well and is recommended by OpenAI Agents SDK. 
-
-```python
-
-with trace("Reporter Agent"):
-        agent = Agent[ReporterContext](  # Specify the context type
-            name="Report Writer", instructions=REPORTER_INSTRUCTIONS, model=model, tools=tools
-        )
-
-        result = await Runner.run(
-            agent,
-            input=task,
-            context=context,  # Pass the context
-            max_turns=10,
-        )
-
-        response = result.final_output
-
-```
-And later:
-```python
-@function_tool
-async def get_market_insights(
-    wrapper: RunContextWrapper[ReporterContext], symbols: List[str]
-) -> str:
-...
-```
-
-IMPORTANT: when using Bedrock through LiteLLM, LiteLLM needs this environment variable set:
-`os.environ["AWS_REGION_NAME"] = bedrock_region`
-This is confusing as other services sometimes expect `"AWS_REGION"` or `"DEFAULT_AWS_REGION"`. But LiteLLM needs `AWS_REGION_NAME` as documented here: https://docs.litellm.ai/docs/providers/bedrock.
-
----
-
-## Key Architectural Decisions & Patterns
-
-### Multi-Agent Orchestration Pattern
-- **Pattern**: Orchestrator (Planner) + Specialist agents (Tagger, Reporter, Charter, Retirement)
-- **Why**: Separation of concerns, enables parallel execution, specialized domain expertise per agent
-- **Implementation**: `backend/planner/agent.py` coordinates via Lambda invocations or SQS messages
-- **Context Passing**: User context passed via `Agent[ContextType]` and `RunContextWrapper[ContextType]` for tools
-
-### OpenAI Agents SDK Constraint
-- **Limitation**: Cannot use BOTH Structured Outputs AND Tool calling in the same agent
-- **Root Cause**: LiteLLM + Bedrock compatibility limitation
-- **Workaround**: Each agent uses EITHER Structured Outputs OR Tools, never both
-- **Decision Point**: Choose based on agent needs - complex data structures favor Structured Outputs, external API calls favor Tools
-
-### LiteLLM Environment Variable Requirement
-- **Critical**: Must set `os.environ["AWS_REGION_NAME"]` (NOT `AWS_REGION` or `DEFAULT_AWS_REGION`)
-- **Why**: LiteLLM-specific requirement for Bedrock provider integration
-- **Impact**: Set in all agent `lambda_handler.py` files before LiteLLM model creation
-- **Documentation**: https://docs.litellm.ai/docs/providers/bedrock
-- **Common Error**: "Model not found" or "Access denied" if not set correctly
-
-### Database Access Pattern (Aurora Data API)
-- **Choice**: Aurora Data API instead of VPC-connected database access
-- **Why**:
-  - Simpler Lambda integration (no VPC configuration)
-  - No connection pool management needed
-  - Automatic IAM authentication via ARN
-  - Easier to teach and understand for students
-- **Trade-off**: Slight latency increase (~50-100ms) vs operational simplicity
-- **Implementation**: `backend/database/` shared library with async SQL execution
-
-### Cost-Optimized Vector Storage (S3 Vectors)
-- **Choice**: S3 Vectors instead of OpenSearch, Pinecone, or ChromaDB
-- **Why**: 90% cost reduction, serverless, no cluster management
-- **Trade-off**: Slightly slower query times vs massive cost savings for educational project
-- **Use Case**: Financial document embeddings for Researcher agent context
-
-### Terraform Independent Directories
-- **Choice**: Each guide has independent terraform directory with local state
-- **Why**:
-  - Students can deploy incrementally (guide by guide)
-  - No complex remote state setup needed (simpler for learning)
-  - Can destroy individual components independently
-  - Failure in one guide doesn't block others
-- **Trade-off**: No cross-directory dependencies automated, must copy ARNs manually
-- **Educational Value**: Students understand each service deployment independently
-
-### NextJS Pages Router (not App Router)
-- **Choice**: Pages Router for frontend
-- **Why**:
-  - Clerk authentication has better documentation for Pages Router
-  - Simpler mental model for students new to NextJS
-  - Course was designed with Pages Router patterns
-- **Note**: App Router is newer but requires different patterns
-
-### Multi-Cloud Strategy (AWS Primary, GCP Secondary)
-- **Current State**: AWS is production-ready, GCP is in development
-- **Why**:
-  - Teach cloud-agnostic AI agent patterns
-  - Demonstrate LiteLLM multi-cloud abstraction
-  - Avoid vendor lock-in
-  - Students learn two major cloud providers
-- **Implementation**: Shared agent code, cloud-specific infrastructure in separate terraform directories
-
----
-
-## Common Issues and Troubleshooting
-
-The most common issues relate to AWS region choices! Check environment variables, terraform settings (everything should propagate from tfvars).
-
-### Issue 1: `package_docker.py` Fails
-
-**Symptoms**: Script fails with uv warning about nested projects and perhaps an error message
-
-**Root Cause (common)**: Docker Desktop is not running or a Docker mounts denied issue
-
-**Diagnosis**:
-1. Ask: "Is Docker Desktop running?"
-2. Check: Can they run `docker ps` successfully?
-3. Recent fix: The script now gives better error messages, but older versions were misleading
-
-**Solution**: Start Docker Desktop, wait for it to fully initialize, then retry
-
-**If the issue is a Mounts Denied error**: It fails to mount the /tmp directory into Docker as it doesn't have access to it. Going to Docker Desktop app, and adding the directory mentioned in the error to the shared paths (Settings -> Resources -> File Sharing) solved the problem for a student.
-
-**Not the solution**: Changing uv project configurations (this is a red herring)
-
-### Issue 2: Region issues and Bedrock Model Access Denied
-
-**Symptoms**: "Access denied" or "Model not found" errors when running agents
-
-**Root Cause**: Model access not granted in Bedrock, or wrong region
-
-**Diagnosis**:
-1. Which model are they trying to use?
-2. Which region is their code running in?
-3. Have they requested model access in Bedrock console?
-4. For inference profiles: Do they have permissions for multiple regions?
-5. Are the right environment variables being set? LiteLLM needs `AWS_REGION_NAME`. Check that nothing is being hardcoded in the code, and that tfvars are set right. Add logging to confirm which region is being used.
-
-**Solution**:
-1. Go to Bedrock console in the correct region
-2. Click "Model access"
-3. Request access to Nova Pro
-4. For cross-region: Set up inference profiles with multi-region permissions
-
-### Issue 3: Terraform Apply Fails
-
-**Symptoms**: Resources fail to create, dependency errors, ARN not found
-
-**Root Cause**: `terraform.tfvars` not configured, or values from previous guides not set
-
-**Diagnosis**:
-1. Does `terraform.tfvars` exist in this directory?
-2. Are all required variables set (check `terraform.tfvars.example`)?
-3. For later guides: Do they have output values from earlier guides?
-4. Run `terraform output` in previous directories to get required ARNs
-
-**Solution**:
-1. Copy `terraform.tfvars.example` to `terraform.tfvars`
-2. Fill in all required values
-3. Get ARNs from previous terraform outputs: `cd terraform/X_previous && terraform output`
-4. Update `.env` file with values for Python scripts
-
-### Issue 4: Lambda Function Failures
-
-**Symptoms**: 500 errors, timeout errors, "Module not found" errors
-
-**Root Cause**: Package not built correctly, environment variables missing, or IAM permissions
-
-**Diagnosis**:
-1. Check CloudWatch logs: `aws logs tail /aws/lambda/alex-{agent-name} --follow`
-2. Check Lambda environment variables in AWS Console
-3. Check IAM role has required permissions
-4. Was the Lambda package built with Docker for linux/amd64?
-
-**Solution**:
-1. For packaging: Re-run `package_docker.py` with Docker running
-2. For env vars: Verify in Lambda console or `terraform.tfvars`
-3. For permissions: Check IAM role policy in terraform
-
-### Issue 5: Aurora Database Connection Fails
-
-**Symptoms**: "Cluster not found", "Secret not found", Data API errors
-
-**Root Cause**: Database not fully initialized, wrong ARNs, or Data API not enabled
-
-**Diagnosis**:
-1. Check cluster status: `aws rds describe-db-clusters`
-2. Verify Data API is enabled (should show `EnableHttpEndpoint: true`)
-3. Check ARNs in environment variables match actual resources
-4. Database may still be initializing (takes 10-15 minutes)
-
-**Solution**:
-1. Wait for cluster to reach "available" status
-2. Verify Data API is enabled in RDS console
-3. Run `terraform output` in `5_database` to get correct ARNs
-4. Update environment variables with actual ARNs
-
-### Issue 6: ARN Mismatch / AccessDenied Errors (COMMON AFTER INFRASTRUCTURE RECREATION)
-
-**Symptoms**:
-- "AccessDenied" when Lambda tries to access database
-- "Secret not found" errors despite secret existing
-- Database connection failures with "not authorized" messages
-- Analysis jobs stuck in "pending" status forever
-- Planner Lambda fails with permission errors
-
-**Root Cause**: Configuration files (`.env`, `terraform.tfvars`) contain ARNs from old/destroyed infrastructure. When you recreate the database, AWS generates a new secret with a different 6-character suffix.
-
-**Example:**
-- Old ARN: `arn:aws:secretsmanager:us-east-1:123:secret:alex-aurora-credentials-e9e539bc-v98Ubw`
-- New ARN: `arn:aws:secretsmanager:us-east-1:123:secret:alex-aurora-credentials-012072a2-C8hdps`
-- Notice the suffix changed: `e9e539bc` → `012072a2`
-
-**Diagnosis**:
-```bash
-# Check for ARN mismatches
-uv run scripts/verify_arns.py
-```
-
-Output will show exactly which ARNs don't match:
-```
-❌ ARN Mismatches Detected!
-
-  secret_arn in .env:
-    Terraform: ...secret:alex-db-012072a2-C8hdps
-    Config:    ...secret:alex-db-e9e539bc-v98Ubw  ← OLD SUFFIX!
-```
-
-**Solution:**
-```bash
-# Automatic sync (recommended)
-uv run scripts/sync_arns.py
-
-# Or preview changes first
-uv run scripts/sync_arns.py --dry-run
-
-# After syncing, redeploy agents
-cd terraform/6_agents && terraform apply
-```
-
-**Prevention**: Use `restart_infrastructure.py` which auto-syncs ARNs after database recreation:
-```bash
-uv run scripts/AWS_START_STOP/restart_infrastructure.py --preset daily
-```
-
----
-
-## Technical Architecture Quick Reference
-
-### Core Services by Guide
-
-**Guides 1-2**: Foundations
-- IAM permissions
-- SageMaker Serverless endpoint (embeddings)
-
-**Guide 3**: Vector Storage
-- S3 Vectors bucket and index
-- Lambda ingest function
-- API Gateway with API key
-
-**Guide 4**: Research Agent
-- App Runner service (Researcher)
-- ECR repository
-- EventBridge scheduler (optional)
-
-**Guide 5**: Database
-- Aurora Serverless v2 PostgreSQL
-- Data API enabled
-- Secrets Manager for credentials
-- Database schema and seed data - **IMPORTANT** be sure to read the database schema
-
-**Guide 6**: Agent Orchestra (The Big One)
-- 5 Lambda functions: Planner, Tagger, Reporter, Charter, Retirement
-- Each lambda function is implemented using OpenAI Agents SDK with simple, idiomatic code. Review an existing implementation for details.
-- SQS queue for orchestration
-- S3 bucket for Lambda packages (>50MB)
-- Cross-service IAM permissions
-
-**Guide 7**: Frontend
-- NextJS static site on S3
-- CloudFront CDN
-- API Gateway + Lambda backend
-- Clerk authentication
-
-**Guide 8**: Enterprise
-- CloudWatch dashboards
-- Alarms and monitoring
-- LangFuse observability
-- Enhanced logging
-
-### Agent Collaboration Pattern
-
-```
-User Request → SQS Queue → Planner (Orchestrator)
-                            ├─→ Tagger (if needed)
-                            ├─→ Reporter ──┐
-                            ├─→ Charter ───┼─→ Results → Database
-                            └─→ Retirement ┘
+uv run scripts/sync_arns.py            # Sync ARNs to .env and tfvars
+uv run scripts/sync_arns.py --dry-run  # Preview only
+uv run scripts/verify_arns.py          # Check for mismatches
 ```
 
 ### Cost Management
-
-**Cost optimization**:
-- Destroy Aurora when not actively working (biggest savings)
-- Use `terraform destroy` in each directory
-- Monitor costs in AWS Cost Explorer
-
-### Cleanup Process
-
 ```bash
-# Destroy in reverse order (optional, but cleaner)
-cd terraform/8_enterprise && terraform destroy
-cd terraform/7_frontend && terraform destroy
-cd terraform/6_agents && terraform destroy
-cd terraform/5_database && terraform destroy  # Biggest cost savings
-cd terraform/4_researcher && terraform destroy
-cd terraform/3_ingestion && terraform destroy
-cd terraform/2_sagemaker && terraform destroy
+cd scripts/AWS_START_STOP && uv run deployment_status.py     # What's deployed
+cd scripts/AWS_START_STOP && uv run minimize_costs.py        # Destroy expensive resources
+cd scripts/AWS_START_STOP && uv run restart_infrastructure.py # Restore resources
 ```
 
----
+### Git — use project utilities, not raw git commands
+```bash
+uv run KB_github_UTILITIES/git_utilities/github_new_branch.py       # Create + push branch
+uv run KB_github_UTILITIES/git_utilities/what_has_changed_in_branch.py  # Compare branches
+uv run KB_github_UTILITIES/git_utilities/burn_it_down_start_new.py  # Delete branch, start fresh
+```
 
-## Key Files Students Modify
+## Architecture
 
-### Configuration Files
-- `.env` - Root environment variables (add values as guides progress)
-- `frontend/.env.local` - Frontend Clerk configuration
-- `terraform/*/terraform.tfvars` - Each terraform directory (copy from .example)
+### Agent Orchestration Flow
+```
+User → NextJS/Clerk → FastAPI (Lambda) → SQS → Planner (Orchestrator)
+                                                  ├→ Tagger    ─→ Aurora DB
+                                                  ├→ Reporter  ─→ Aurora DB + S3 Vectors
+                                                  ├→ Charter   ─→ Aurora DB
+                                                  └→ Retirement ─→ Aurora DB
+Researcher (App Runner) ← Reporter (for market research context)
+S3 Vectors ← SageMaker Embeddings (all-MiniLM-L6-v2)
+All agents use AWS Bedrock Nova Pro via LiteLLM
+```
 
-### Code Students May Need to Update
-- `backend/researcher/server.py` - Region and model configuration (Guide 4) - but this should come from variables and shouldn't need code changes
-- Agent templates in `backend/*/templates.py` - For customization
-- Frontend pages for UI modifications
+### Agent Code Pattern (every agent follows this)
+Each agent directory contains: `lambda_handler.py`, `agent.py`, `templates.py`, `test_simple.py`, `test_full.py`, `package_docker.py`
 
----
+```python
+# lambda_handler.py — standard pattern
+from agents import Agent, Runner, trace
+from agents.extensions.models.litellm_model import LitellmModel
 
-## Getting Help
+os.environ["AWS_REGION_NAME"] = bedrock_region  # MUST be AWS_REGION_NAME for LiteLLM
 
-### For Students
+model = LitellmModel(model=f"bedrock/{model_id}")
 
-If you're stuck:
+with trace("Agent Name"):
+    agent = Agent(
+        name="Agent Name",
+        instructions=INSTRUCTIONS,  # from templates.py
+        model=model,
+        tools=tools  # OR use output_type for structured outputs — NEVER both
+    )
+    result = await Runner.run(agent, input=task, max_turns=20)
+    response = result.final_output
+```
 
-1. **Check the guide carefully** - Most steps have troubleshooting sections
-2. **Review error messages** - Look at CloudWatch logs, not just terminal output
-3. **Verify prerequisites** - Is Docker running? Are permissions set? Is terraform.tfvars configured?
-4. **Contact the instructor**:
-   - **Post a question in Udemy** - Include your guide number, error message, and what you've tried
-   - **Email Ed Donner**: ed@edwarddonner.com
+**Critical constraint**: LiteLLM + Bedrock cannot use structured outputs AND tool calling on the same agent. Choose one per agent.
 
-When asking for help, include:
-- Which guide/day you're on
-- Exact error message (copy/paste, don't paraphrase)
-- What command you ran
-- Relevant CloudWatch logs if available
-- What you've already tried
+**Context passing for tools** (when tool needs user context):
+```python
+agent = Agent[ReporterContext](name="Reporter", ...)
+result = await Runner.run(agent, input=task, context=context)
 
-### For Claude Code (AI Assistant)
+@function_tool
+async def my_tool(wrapper: RunContextWrapper[ReporterContext], arg: str) -> str: ...
+```
 
-When helping students:
+### Key Infrastructure Decisions
+- **Aurora Data API** (not VPC): simpler Lambda integration, no connection pools, slight latency tradeoff
+- **S3 Vectors** (not OpenSearch): 90% cheaper, serverless
+- **Independent Terraform dirs**: each guide deploys independently, local state, no remote backend
+- **OpenAI Agents SDK** via `openai-agents` package (import as `from agents import ...`)
+- **Nova Pro model** (not Claude Sonnet): avoids Bedrock rate limits
 
-0. **Prepare** - Read all the guides to be fully briefed.
-1. **Establish context** - Which guide? What's the goal?
-2. **Get error details** - Actual messages, logs, console output
-3. **Diagnose first** - Don't write code before understanding the problem
-4. **Think incrementally** - One change at a time
-5. **Verify understanding** - Explain what you think is wrong before fixing
-6. **Keep it simple** - Avoid over-engineering solutions
+### Infrastructure by Guide
+| Guide | Resources | Cost |
+|-------|-----------|------|
+| 2 | SageMaker Serverless endpoint | ~$0.20/hr idle |
+| 3 | S3 Vectors, Lambda, API Gateway | ~$5/mo |
+| 4 | App Runner (Researcher), ECR | ~$5/mo |
+| 5 | Aurora Serverless v2 PostgreSQL | **~$40/mo** |
+| 6 | 5 Lambda agents, SQS, S3 packages | ~$10/mo |
+| 7 | CloudFront, S3, API Gateway Lambda | ~$5/mo |
+| 8 | CloudWatch dashboards | ~$5/mo |
 
-**Remember**: Students are learning. The goal is to help them understand what went wrong and how to fix it, not just to make the error go away.
+Aurora (Guide 5) is the biggest cost. Destroy when not working: `cd terraform/5_database && terraform destroy`
 
----
+## Critical Rules
 
-### Course Context
-- Instructor: Ed Donner
-- Platform: Udemy
-- Course: AI in Production
-- Project: "Alex" - Capstone for Weeks 3-4
+### Package Management
+- **Always `uv`**: `uv add`, `uv run`, `uv run pytest`. Never `pip install`, never bare `python`.
+- Each backend agent dir has its own `pyproject.toml`. Nested uv projects are fine.
+- Correct package: `uv add openai-agents` (not `agents`)
 
----
+### Platform
+- Student may be on Windows, Mac, or Linux. Prefer Python scripts over shell scripts.
+- Docker must be running for `package_docker.py`. Docker build targets `linux/amd64`.
 
-*This guide was created to help AI assistants (like Claude Code) effectively support students through the Alex project. Last updated: October 2025*
+### Approach
+- **Diagnose before fixing**: don't write code before understanding the root cause. One change at a time.
+- **Ask which guide** the student is on — this determines what infrastructure exists.
+- **Read the guides** in `guides/` before helping with guide-specific work.
+
+## Common Troubleshooting
+
+**`package_docker.py` fails**: Docker Desktop not running. Check with `docker ps`. Mounts Denied → add path to Docker Desktop File Sharing settings.
+
+**Bedrock "Access denied" / "Model not found"**: Wrong region or model access not granted. LiteLLM requires `AWS_REGION_NAME` (not `AWS_REGION`). Check Bedrock console model access. Nova Pro needs inference profiles for cross-region.
+
+**Terraform fails**: Missing `terraform.tfvars` (copy from `.example`). For later guides, get ARNs from earlier `terraform output`.
+
+**"AccessDenied" after recreating infrastructure**: ARNs changed (Aurora secret ARN has random suffix). Run `uv run scripts/sync_arns.py` then redeploy agents.
+
+**Lambda errors**: Check CloudWatch logs: `aws logs tail /aws/lambda/alex-<agent> --follow`. Verify env vars and IAM permissions.
+
+## CI/CD
+
+- **Mock Tests** (`.github/workflows/test.yml`): Runs on push/PR. Backend mocks + frontend Jest/Playwright. No AWS needed.
+- **Deployment Tests** (`.github/workflows/deployment-tests.yml`): Runs on PR to main/develop. Real AWS infrastructure. Requires GitHub secrets with current ARNs.
+- After infrastructure recreation, GitHub secrets must be updated with new ARNs.
+
+## Domain Context (from Cursor rules)
+
+- **Tagger**: Classifies instruments by asset class, region, sector, market cap. Allocations must sum to 100%.
+- **Planner**: Orchestrates staged workflow — data gathering, parallel agent dispatch, results aggregation. Integrates market pricing via polygon.io.
+- **Reporter**: Portfolio analysis with market research context from Researcher agent and S3 Vectors.
+- **Charter**: Generates visualizations and charts from analysis data.
+- **Retirement**: Monte Carlo simulations for retirement projections, dynamic withdrawal modeling, safe withdrawal rate calculation, portfolio survival probability.
