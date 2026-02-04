@@ -11,6 +11,7 @@ from .schemas import (
     PositionCreate, JobCreate, JobUpdate
 )
 from .market_data_models import InstrumentFundamentals
+from .economic_models import EconomicIndicators
 
 
 class BaseModel:
@@ -312,6 +313,7 @@ class Database:
         self.positions = Positions(self.client)
         self.jobs = Jobs(self.client)
         self.fundamentals = InstrumentFundamentals(self.client)
+        self.economic_indicators = EconomicIndicators(self.client)
     
     def execute_raw(self, sql: str, parameters: List[Dict] = None) -> Dict:
         """Execute raw SQL for complex queries"""

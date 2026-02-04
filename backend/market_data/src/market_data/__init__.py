@@ -1,9 +1,10 @@
 """
 Market data service for Alex Financial Planner.
-Wraps external data APIs (Polygon, FMP) into a unified interface.
+Wraps external data APIs (Polygon, FMP, FRED) into a unified interface.
 """
 
 from .fmp import FMPClient
+from .fred import FREDClient
 from .polygon_prices import (
     get_share_price,
     get_share_price_polygon,
@@ -13,6 +14,7 @@ from .prices import get_price
 
 __all__ = [
     "FMPClient",
+    "FREDClient",
     "get_share_price",
     "get_share_price_polygon",
     "get_price",

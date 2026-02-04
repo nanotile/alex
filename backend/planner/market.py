@@ -1,6 +1,6 @@
 """
-Market data functions using polygon.io for fetching real-time prices
-and FMP for fundamental data.
+Market data functions using polygon.io for fetching real-time prices,
+FMP for fundamental data, and FRED for macro-economic indicators.
 """
 
 import os
@@ -8,6 +8,7 @@ import logging
 from typing import Set, Dict, List, Any
 from prices import get_share_price
 from market_data.fmp import FMPClient
+from market_data.fred import FREDClient, FRED_SERIES
 
 logger = logging.getLogger()
 
@@ -210,3 +211,63 @@ def update_instrument_fundamentals(job_id: str, db) -> Dict[str, Any]:
         # Non-critical — continue without fundamentals
 
     return fundamentals_map
+
+
+def update_economic_indicators(db) -> Dict[str, Any]:
+    """
+    Fetch FRED macro-economic data and cache in Aurora.
+    No job_id needed — economic data is shared across all portfolios.
+    Only re-fetches if data is older than 6 hours.
+
+    Returns a dict of {series_id: indicator_dict} for passing to other agents.
+    """
+    indicators_map = {}
+
+    try:
+        fred_api_key = os.getenv("FRED_API_KEY", "")
+        if not fred_api_key:
+            logger.info("Market: FRED_API_KEY not set — skipping economic indicators")
+            return indicators_map
+
+        fred = FREDClient(api_key=fred_api_key)
+
+        series_ids = list(FRED_SERIES.keys())
+        stale_series = db.economic_indicators.get_stale_series(series_ids, max_age_hours=6)
+
+        if stale_series:
+            logger.info(f"Market: Fetching FRED data for {len(stale_series)} stale series: {stale_series}")
+
+            for series_id in stale_series:
+                try:
+                    obs = fred.get_latest_observation(series_id)
+                    if obs:
+                        meta = FRED_SERIES[series_id]
+                        data = {
+                            "series_id": series_id,
+                            "series_name": meta["name"],
+                            "latest_value": obs["value"],
+                            "latest_date": obs["date"],
+                            "previous_value": obs.get("previous_value"),
+                            "previous_date": obs.get("previous_date"),
+                            "units": meta["units"],
+                            "frequency": meta["frequency"],
+                        }
+                        db.economic_indicators.upsert_indicator(data)
+                        logger.info(f"Market: Updated {series_id} ({meta['name']})")
+                except Exception as e:
+                    logger.warning(f"Market: FRED fetch failed for {series_id}: {e}")
+        else:
+            logger.info("Market: All economic indicators are fresh (< 6 hours)")
+
+        # Load all indicators (fresh + cached) for downstream agents
+        all_indicators = db.economic_indicators.find_all()
+        for record in all_indicators:
+            indicators_map[record["series_id"]] = record
+
+        logger.info(f"Market: Economic indicators available for {len(indicators_map)} series")
+
+    except Exception as e:
+        logger.error(f"Market: Error updating economic indicators: {e}")
+        # Non-critical — continue without economic data
+
+    return indicators_map

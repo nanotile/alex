@@ -303,3 +303,17 @@ class FundamentalsResponse(BaseModel):
     fifty_two_week_low: Optional[float] = Field(None, description="52-week low price")
     avg_volume: Optional[int] = Field(None, description="Average daily trading volume")
     fetched_at: Optional[datetime] = Field(None, description="When data was last fetched")
+
+
+class EconomicIndicatorResponse(BaseModel):
+    """Schema for economic indicators from FRED cache"""
+
+    series_id: str = Field(description="FRED series ID (e.g., DGS10, FEDFUNDS)")
+    series_name: Optional[str] = Field(None, description="Human-readable name")
+    latest_value: Optional[float] = Field(None, description="Most recent observation value")
+    latest_date: Optional[date] = Field(None, description="Date of most recent observation")
+    previous_value: Optional[float] = Field(None, description="Previous observation value")
+    previous_date: Optional[date] = Field(None, description="Date of previous observation")
+    units: Optional[str] = Field(None, description="Units (e.g., Percent, Index)")
+    frequency: Optional[str] = Field(None, description="Data frequency (Daily, Monthly, Quarterly)")
+    fetched_at: Optional[datetime] = Field(None, description="When data was last fetched")

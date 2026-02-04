@@ -23,6 +23,7 @@ class ReporterContext:
     user_data: Dict[str, Any]
     db: Optional[Any] = None  # Database connection (optional for testing)
     fundamentals: Optional[Dict[str, Dict[str, Any]]] = None  # {symbol: fundamentals_dict}
+    economic_data: Optional[Dict[str, Dict[str, Any]]] = None  # {series_id: indicator_dict}
 
 
 def calculate_portfolio_metrics(portfolio_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -247,8 +248,96 @@ def format_fundamentals_for_analysis(fundamentals: Dict[str, Dict[str, Any]]) ->
     return "\n".join(lines)
 
 
+def format_economic_context(economic_data: Dict[str, Dict[str, Any]]) -> str:
+    """Format FRED economic indicators into a readable block for the LLM prompt."""
+    if not economic_data:
+        return "No economic indicator data available."
+
+    def fmt_val(series_id: str, data: Dict) -> str:
+        """Format a single indicator value with previous comparison."""
+        val = data.get("latest_value")
+        prev = data.get("previous_value")
+        if val is None:
+            return "N/A"
+        try:
+            val = float(val)
+        except (ValueError, TypeError):
+            return "N/A"
+
+        val_str = f"{val:,.2f}%" if data.get("units") == "Percent" else f"{val:,.1f}"
+
+        if prev is not None:
+            try:
+                prev = float(prev)
+                prev_str = f"{prev:,.2f}%" if data.get("units") == "Percent" else f"{prev:,.1f}"
+                val_str += f" (prev: {prev_str})"
+            except (ValueError, TypeError):
+                pass
+
+        return val_str
+
+    lines = ["Economic Environment (from FRED):"]
+
+    # Interest Rates
+    rate_ids = ["FEDFUNDS", "DGS10", "DGS2", "T10Y2Y"]
+    rate_data = {sid: economic_data[sid] for sid in rate_ids if sid in economic_data}
+    if rate_data:
+        lines.append("  Interest Rates:")
+        for sid in rate_ids:
+            if sid in rate_data:
+                d = rate_data[sid]
+                name = d.get("series_name", sid)
+                val_str = fmt_val(sid, d)
+                extra = ""
+                # Flag inverted yield curve
+                if sid == "T10Y2Y":
+                    try:
+                        v = float(d.get("latest_value", 0))
+                        if v < 0:
+                            extra = " [INVERTED]"
+                    except (ValueError, TypeError):
+                        pass
+                lines.append(f"    {name}: {val_str}{extra}")
+
+    # Inflation & Employment
+    macro_ids = ["CPIAUCSL", "UNRATE"]
+    macro_data = {sid: economic_data[sid] for sid in macro_ids if sid in economic_data}
+    if macro_data:
+        lines.append("  Inflation & Employment:")
+        for sid in macro_ids:
+            if sid in macro_data:
+                d = macro_data[sid]
+                name = d.get("series_name", sid)
+                lines.append(f"    {name}: {fmt_val(sid, d)}")
+
+    # Market & Growth
+    growth_ids = ["VIXCLS", "GDP"]
+    growth_data = {sid: economic_data[sid] for sid in growth_ids if sid in economic_data}
+    if growth_data:
+        lines.append("  Market & Growth:")
+        for sid in growth_ids:
+            if sid in growth_data:
+                d = growth_data[sid]
+                name = d.get("series_name", sid)
+                val_str = fmt_val(sid, d)
+                if sid == "GDP":
+                    # Format GDP in billions
+                    try:
+                        v = float(d.get("latest_value", 0))
+                        prev = d.get("previous_value")
+                        val_str = f"${v:,.1f}B"
+                        if prev is not None:
+                            val_str += f" (prev: ${float(prev):,.1f}B)"
+                    except (ValueError, TypeError):
+                        pass
+                lines.append(f"    {name}: {val_str}")
+
+    return "\n".join(lines)
+
+
 def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[str, Any],
-                 db=None, fundamentals: Dict[str, Dict[str, Any]] = None):
+                 db=None, fundamentals: Dict[str, Dict[str, Any]] = None,
+                 economic_data: Dict[str, Dict[str, Any]] = None):
     """Create the reporter agent with tools and context."""
 
     # Get model configuration
@@ -264,7 +353,7 @@ def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[st
     # Create context
     context = ReporterContext(
         job_id=job_id, portfolio_data=portfolio_data, user_data=user_data,
-        db=db, fundamentals=fundamentals
+        db=db, fundamentals=fundamentals, economic_data=economic_data
     )
 
     # Tools - only get_market_insights now, report saved in lambda_handler
@@ -276,6 +365,9 @@ def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[st
     # Format fundamentals for analysis
     fundamentals_section = format_fundamentals_for_analysis(fundamentals or {})
 
+    # Format economic indicators
+    economic_section = format_economic_context(economic_data or {})
+
     # Create task
     task = f"""Analyze this investment portfolio and write a comprehensive report.
 
@@ -284,19 +376,23 @@ def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[st
 Fundamental Data (from Financial Modeling Prep):
 {fundamentals_section}
 
+{economic_section}
+
 Your task:
 1. First, get market insights for the top holdings using get_market_insights()
 2. Analyze the portfolio's current state, strengths, and weaknesses
 3. Use the fundamental data above to provide specific valuation analysis
-4. Generate a detailed, professional analysis report in markdown format
+4. Use economic indicators to contextualize portfolio risks — note yield curve status, inflation trends, rate environment impact on fixed income vs equities
+5. Generate a detailed, professional analysis report in markdown format
 
 The report should include:
 - Executive Summary
 - Portfolio Composition Analysis (with valuation metrics from fundamentals)
-- Risk Assessment (use beta and debt/equity data)
+- Economic Environment (summarize current rate, inflation, and growth conditions)
+- Risk Assessment (use beta, debt/equity data, and VIX level)
 - Diversification Analysis (use sector/industry data)
 - Retirement Readiness (based on user goals)
-- Recommendations (informed by valuations, yield, growth metrics)
+- Recommendations (informed by valuations, yield, growth metrics, and macro environment)
 - Market Context (from insights)
 
 Provide your complete analysis as the final output in clear markdown format.

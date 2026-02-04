@@ -140,6 +140,22 @@ statements = [
     )""",
     """CREATE TRIGGER update_instrument_fundamentals_updated_at BEFORE UPDATE ON instrument_fundamentals
         FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()""",
+
+    # --- Migration 004: economic_indicators (FRED data cache) ---
+    """CREATE TABLE IF NOT EXISTS economic_indicators (
+        series_id VARCHAR(50) PRIMARY KEY,
+        series_name VARCHAR(255),
+        latest_value DECIMAL(20,4),
+        latest_date DATE,
+        previous_value DECIMAL(20,4),
+        previous_date DATE,
+        units VARCHAR(100),
+        frequency VARCHAR(20),
+        fetched_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+    )""",
+    """CREATE TRIGGER update_economic_indicators_updated_at BEFORE UPDATE ON economic_indicators
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()""",
 ]
 
 print("🚀 Running database migrations...")
