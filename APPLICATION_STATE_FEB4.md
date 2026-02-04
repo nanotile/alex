@@ -16,8 +16,9 @@ User (browser)
         → Planner agent (Lambda) — orchestrator
             ├→ Polygon.io   — real-time stock prices
             ├→ FMP API      — company fundamentals (PE, dividends, sector, market cap)
+            ├→ FRED API     — macro-economic indicators (rates, inflation, unemployment, GDP, VIX)
             ├→ Tagger agent    — classifies instruments by asset class/region/sector
-            ├→ Reporter agent  — portfolio analysis + fundamentals + S3 Vectors context
+            ├→ Reporter agent  — portfolio analysis + fundamentals + economic context + S3 Vectors
             ├→ Charter agent   — generates interactive chart data
             └→ Retirement agent — Monte Carlo retirement projections (1000+ scenarios)
 
@@ -29,7 +30,7 @@ Researcher agent (App Runner, every 2 hours)
 
 All AI agents use AWS Bedrock Nova Pro via LiteLLM + OpenAI Agents SDK
 All agents share Aurora PostgreSQL (Data API) via the alex-database package
-Market data APIs shared via the alex-market-data package (Polygon + FMP)
+Market data APIs shared via the alex-market-data package (Polygon + FMP + FRED)
 ```
 
 ---
@@ -61,6 +62,7 @@ Each Terraform module is independent with local state. No remote backend.
 | **users** | User profiles | clerk_user_id (PK), display_name, years_until_retirement, target_retirement_income, asset_class_targets (JSONB), region_targets (JSONB) |
 | **instruments** | Financial reference data | symbol (PK), name, instrument_type, current_price, allocation by region/sector/asset_class (JSONB) |
 | **instrument_fundamentals** | FMP data cache (24h TTL) | symbol (PK, FK→instruments), company_name, sector, industry, market_cap, pe_ratio, pb_ratio, dividend_yield, roe, debt_to_equity, eps, beta, 52-week range, avg_volume, fetched_at |
+| **economic_indicators** | FRED data cache (6h TTL) | series_id (PK), series_name, latest_value, latest_date, previous_value, previous_date, units, frequency, fetched_at |
 | **accounts** | Portfolio accounts | id (UUID), clerk_user_id (FK), account_name, account_purpose, cash_balance |
 | **positions** | Holdings per account | id (UUID), account_id (FK), symbol (FK), quantity (DECIMAL 20,8), as_of_date. Unique on (account_id, symbol) |
 | **jobs** | Analysis job tracking | id (UUID), clerk_user_id (FK), status (pending/running/completed/failed), report_payload, charts_payload, retirement_payload, summary_payload (all JSONB) |
@@ -72,15 +74,15 @@ Each Terraform module is independent with local state. No remote backend.
 | Agent/Package | Runtime | Role |
 |-------|---------|------|
 | **api** | Lambda (FastAPI + Mangum) | REST API for frontend, Clerk auth, user/portfolio/job CRUD |
-| **planner** | Lambda | Orchestrator — receives SQS jobs, fetches prices (Polygon) + fundamentals (FMP), dispatches specialists |
+| **planner** | Lambda | Orchestrator — receives SQS jobs, fetches prices (Polygon) + fundamentals (FMP) + economic indicators (FRED), dispatches specialists |
 | **tagger** | Lambda | Classifies instruments by asset class, region, sector (structured output, no tools) |
-| **reporter** | Lambda | Portfolio analysis with FMP fundamentals + S3 Vectors market context (tool calling, no structured output) |
+| **reporter** | Lambda | Portfolio analysis with FMP fundamentals + FRED economic context + S3 Vectors market context (tool calling, no structured output) |
 | **charter** | Lambda | Generates 4-6 chart specifications from analysis data |
 | **retirement** | Lambda | Monte Carlo simulations — withdrawal modeling, survival probability |
 | **researcher** | App Runner (FastAPI) | Autonomous web scraper, embeds findings into S3 Vectors |
 | **ingest** | Lambda | Document vectorization via SageMaker endpoint into S3 Vectors |
 | **database** | Shared library | Aurora Data API client, Pydantic models, used by all agents |
-| **market_data** | Shared library | FMP API client, Polygon price fetcher, unified price interface, used by planner/reporter/tagger |
+| **market_data** | Shared library | FMP API client, FRED API client, Polygon price fetcher, unified price interface, used by planner/reporter/tagger |
 
 **Critical constraint**: LiteLLM + Bedrock cannot combine structured outputs and tool calling on the same agent.
 
@@ -133,8 +135,9 @@ After recreating infrastructure, always run `sync_arns.py` — Aurora secret ARN
 4. **OpenAI Agents SDK** (`openai-agents`) with LiteLLM — vendor-neutral agent framework running on Bedrock
 5. **Nova Pro** over Claude Sonnet — avoids Bedrock rate limits on Anthropic models
 6. **Pages Router** over App Router — simpler mental model for the course
-7. **Shared market_data package** — same pattern as database package; wraps Polygon + FMP, extensible for FRED/sentiment later
+7. **Shared market_data package** — same pattern as database package; wraps Polygon + FMP + FRED, extensible for sentiment/alternative data later
 8. **Separate instrument_fundamentals table** — avoids modifying existing instruments table; 24-hour staleness cache; graceful degradation if FMP unavailable
+9. **Separate economic_indicators table** — keyed by FRED series_id (not symbol); economy-wide data shared across all portfolios; 6-hour staleness cache; graceful degradation if FRED unavailable
 
 ---
 
@@ -145,6 +148,7 @@ After recreating infrastructure, always run `sync_arns.py` — Aurora secret ARN
 | `POLYGON_API_KEY` | market_data, planner | Polygon.io stock prices |
 | `POLYGON_PLAN` | market_data, planner | "paid" or free tier |
 | `FMP_API_KEY` | market_data, planner | Financial Modeling Prep fundamentals |
+| `FRED_API_KEY` | market_data, planner | FRED macro-economic indicators (free at fred.stlouisfed.org) |
 | `AURORA_CLUSTER_ARN` | database | Aurora Data API |
 | `AURORA_SECRET_ARN` | database | Aurora Data API auth |
 | `AURORA_DATABASE` | database | Database name (default: "alex") |
@@ -156,9 +160,9 @@ After recreating infrastructure, always run `sync_arns.py` — Aurora secret ARN
 ## What's Needed to Fully Run
 
 1. Restore `5_database`: `cd terraform/5_database && terraform apply`
-2. Run migrations: `cd backend/database && uv run python run_migrations.py` (includes instrument_fundamentals table)
+2. Run migrations: `cd backend/database && uv run python run_migrations.py` (includes instrument_fundamentals + economic_indicators tables)
 3. Sync ARNs: `uv run scripts/sync_arns.py`
-4. Set `FMP_API_KEY` in `.env` and Lambda environment variables
+4. Set `FMP_API_KEY` and `FRED_API_KEY` in `.env` and Lambda environment variables
 5. Repackage/redeploy agents: `cd backend/<agent> && uv run package_docker.py`
 6. Optionally restore `4_researcher`: `cd terraform/4_researcher && terraform apply`
 7. Verify: `cd scripts/AWS_START_STOP && uv run deployment_status.py`
