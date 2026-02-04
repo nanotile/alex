@@ -42,16 +42,16 @@ resource "aws_iam_role_policy_attachment" "sagemaker_full_access" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
 }
 
-# SageMaker Model
-resource "aws_sagemaker_model" "embedding_model" {
-  name               = "alex-embedding-model"
+# SageMaker Model — FinBERT financial sentiment analysis
+resource "aws_sagemaker_model" "sentiment_model" {
+  name               = "alex-sentiment-model"
   execution_role_arn = aws_iam_role.sagemaker_role.arn
 
   primary_container {
     image = var.sagemaker_image_uri
     environment = {
-      HF_MODEL_ID = var.embedding_model_name
-      HF_TASK     = "feature-extraction"
+      HF_MODEL_ID = var.sentiment_model_name
+      HF_TASK     = var.sagemaker_hf_task
     }
   }
 
@@ -59,15 +59,15 @@ resource "aws_sagemaker_model" "embedding_model" {
 }
 
 # Serverless Inference Config
-resource "aws_sagemaker_endpoint_configuration" "serverless_config" {
-  name = "alex-embedding-serverless-config"
+resource "aws_sagemaker_endpoint_configuration" "sentiment_config" {
+  name = "alex-sentiment-serverless-config"
 
   production_variants {
-    model_name = aws_sagemaker_model.embedding_model.name
-    
+    model_name = aws_sagemaker_model.sentiment_model.name
+
     serverless_config {
       memory_size_in_mb = 3072
-      max_concurrency   = 2  # Reduced from 10 to avoid quota limit
+      max_concurrency   = 2
     }
   }
 }
@@ -77,17 +77,17 @@ resource "time_sleep" "wait_for_iam_propagation" {
   depends_on = [
     aws_iam_role_policy_attachment.sagemaker_full_access
   ]
-  
+
   create_duration = "15s"
 }
 
-# SageMaker Endpoint
-resource "aws_sagemaker_endpoint" "embedding_endpoint" {
-  name                 = "alex-embedding-endpoint"
-  endpoint_config_name = aws_sagemaker_endpoint_configuration.serverless_config.name
-  
+# SageMaker Endpoint — FinBERT sentiment analysis
+resource "aws_sagemaker_endpoint" "sentiment_endpoint" {
+  name                 = "alex-sentiment-endpoint"
+  endpoint_config_name = aws_sagemaker_endpoint_configuration.sentiment_config.name
+
   depends_on = [
     time_sleep.wait_for_iam_propagation
   ]
-  
+
 }

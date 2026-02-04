@@ -160,7 +160,7 @@ async def get_market_insights(
             returnMetadata=True,
         )
 
-        # Format insights
+        # Format insights (include sentiment if available)
         insights = []
         for vector in response.get("vectors", []):
             metadata = vector.get("metadata", {})
@@ -168,7 +168,15 @@ async def get_market_insights(
             if text:
                 company = metadata.get("company_name", "")
                 prefix = f"{company}: " if company else "- "
-                insights.append(f"{prefix}{text}...")
+                sentiment_label = metadata.get("sentiment_label", "")
+                sentiment_score = metadata.get("sentiment_score", "")
+                sent_str = ""
+                if sentiment_label and sentiment_score:
+                    try:
+                        sent_str = f" [{sentiment_label} {float(sentiment_score):.0%}]"
+                    except (ValueError, TypeError):
+                        pass
+                insights.append(f"{prefix}{text}...{sent_str}")
 
         if insights:
             return "Market Insights:\n" + "\n".join(insights)

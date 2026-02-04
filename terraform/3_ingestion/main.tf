@@ -137,6 +137,13 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "s3vectors:DeleteVectors"
         ]
         Resource = "arn:aws:s3vectors:${var.aws_region}:${data.aws_caller_identity.current.account_id}:bucket/${aws_s3_bucket.vectors.id}/index/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sagemaker:InvokeEndpoint"
+        ]
+        Resource = "arn:aws:sagemaker:${var.aws_region}:${data.aws_caller_identity.current.account_id}:endpoint/alex-sentiment-endpoint"
       }
     ]
   })
@@ -158,10 +165,11 @@ resource "aws_lambda_function" "ingest" {
   
   environment {
     variables = {
-      VECTOR_BUCKET           = aws_s3_bucket.vectors.id
-      BEDROCK_EMBEDDING_MODEL = var.bedrock_embedding_model
-      BEDROCK_REGION          = local.bedrock_region
-      AWS_REGION              = var.aws_region
+      VECTOR_BUCKET                = aws_s3_bucket.vectors.id
+      BEDROCK_EMBEDDING_MODEL      = var.bedrock_embedding_model
+      BEDROCK_REGION               = local.bedrock_region
+      AWS_REGION                   = var.aws_region
+      SAGEMAKER_SENTIMENT_ENDPOINT = "alex-sentiment-endpoint"
     }
   }
   

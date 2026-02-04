@@ -24,13 +24,13 @@ User (browser)
 
 Researcher agent (App Runner, every 2 hours)
   → scrapes financial sites with Playwright
-  → embeds via SageMaker (all-MiniLM-L6-v2)
-  → stores in S3 Vectors knowledge base
-  → Reporter queries this context during analysis
+  → ingests via Lambda → Bedrock Titan embedding + SageMaker FinBERT sentiment
+  → stores in S3 Vectors knowledge base (with sentiment_label + sentiment_score metadata)
+  → Reporter queries this context during analysis (sentiment shown inline)
 
 All AI agents use AWS Bedrock Nova Pro via LiteLLM + OpenAI Agents SDK
 All agents share Aurora PostgreSQL (Data API) via the alex-database package
-Market data APIs shared via the alex-market-data package (Polygon + FMP + FRED)
+Market data APIs shared via the alex-market-data package (Polygon + FMP + FRED + Sentiment)
 ```
 
 ---
@@ -39,7 +39,7 @@ Market data APIs shared via the alex-market-data package (Polygon + FMP + FRED)
 
 | Module | What It Deploys | Monthly Cost | Current Status |
 |--------|----------------|-------------|----------------|
-| **2_sagemaker** | SageMaker serverless embedding endpoint (all-MiniLM-L6-v2, 3GB) | ~$10 | Likely deployed |
+| **2_sagemaker** | SageMaker serverless FinBERT sentiment endpoint (ProsusAI/finbert, text-classification, 3GB) | ~$10 | Likely deployed |
 | **3_ingestion** | S3 Vectors bucket + Lambda ingestion + API Gateway (key auth, rate limited) | ~$1-5 | Likely deployed |
 | **4_researcher** | ECR repo + App Runner service (1 vCPU, 2GB) for autonomous research | ~$51 | **Destroyed** (cost savings) |
 | **5_database** | Aurora Serverless v2 PostgreSQL 15.12 + Secrets Manager (Data API) | ~$65 | **Destroyed** (cost savings) |
@@ -80,9 +80,9 @@ Each Terraform module is independent with local state. No remote backend.
 | **charter** | Lambda | Generates 4-6 chart specifications from analysis data |
 | **retirement** | Lambda | Monte Carlo simulations — withdrawal modeling, survival probability |
 | **researcher** | App Runner (FastAPI) | Autonomous web scraper, embeds findings into S3 Vectors |
-| **ingest** | Lambda | Document vectorization via SageMaker endpoint into S3 Vectors |
+| **ingest** | Lambda | Document vectorization (Bedrock Titan) + sentiment scoring (SageMaker FinBERT) into S3 Vectors |
 | **database** | Shared library | Aurora Data API client, Pydantic models, used by all agents |
-| **market_data** | Shared library | FMP API client, FRED API client, Polygon price fetcher, unified price interface, used by planner/reporter/tagger |
+| **market_data** | Shared library | FMP API client, FRED API client, Polygon price fetcher, SentimentClient (FinBERT via SageMaker), unified price interface, used by planner/reporter/tagger/ingest |
 
 **Critical constraint**: LiteLLM + Bedrock cannot combine structured outputs and tool calling on the same agent.
 
@@ -138,6 +138,7 @@ After recreating infrastructure, always run `sync_arns.py` — Aurora secret ARN
 7. **Shared market_data package** — same pattern as database package; wraps Polygon + FMP + FRED, extensible for sentiment/alternative data later
 8. **Separate instrument_fundamentals table** — avoids modifying existing instruments table; 24-hour staleness cache; graceful degradation if FMP unavailable
 9. **Separate economic_indicators table** — keyed by FRED series_id (not symbol); economy-wide data shared across all portfolios; 6-hour staleness cache; graceful degradation if FRED unavailable
+10. **FinBERT sentiment at ingest time** — repurposed idle SageMaker embedding endpoint for ProsusAI/finbert (text-classification); sentiment scored once during ingest, stored as S3 Vectors metadata (sentiment_label + sentiment_score); Reporter surfaces sentiment inline in market insights; zero additional infrastructure cost
 
 ---
 
@@ -154,6 +155,7 @@ After recreating infrastructure, always run `sync_arns.py` — Aurora secret ARN
 | `AURORA_DATABASE` | database | Database name (default: "alex") |
 | `BEDROCK_MODEL_ID` | all agents | Bedrock model for LLM calls |
 | `BEDROCK_REGION` | all agents | AWS region for Bedrock |
+| `SAGEMAKER_SENTIMENT_ENDPOINT` | ingest, market_data | SageMaker FinBERT endpoint name (default: alex-sentiment-endpoint) |
 
 ---
 

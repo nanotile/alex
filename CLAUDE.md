@@ -70,7 +70,7 @@ User → NextJS/Clerk → FastAPI (Lambda) → SQS → Planner (Orchestrator)
                                                   ├→ Charter    ─→ Aurora DB
                                                   └→ Retirement ─→ Aurora DB
 Researcher (App Runner) ← Reporter (for market research context)
-S3 Vectors ← SageMaker Embeddings (all-MiniLM-L6-v2)
+S3 Vectors ← Bedrock Titan Embeddings + SageMaker FinBERT Sentiment (ProsusAI/finbert)
 All agents use AWS Bedrock Nova Pro via LiteLLM
 ```
 
