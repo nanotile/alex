@@ -20,11 +20,25 @@ cd backend/<agent> && uv add <package>                       # Add dependency
 ### Frontend (NextJS — Pages Router, not App Router)
 ```bash
 cd frontend && npm run dev          # Dev server (localhost:3000)
-cd frontend && npm run build        # Production build
+cd frontend && npm run build        # Production build (static export to out/)
 cd frontend && npm test             # Jest unit tests
 cd frontend && npm run test:e2e     # Playwright E2E tests
 cd frontend && npm run lint         # Lint
 ```
+
+### Cloudflare Pages Deployment (finance.kentbenson.net)
+```bash
+# Build with API URL baked in, then deploy
+cd frontend && NEXT_PUBLIC_API_URL=https://0b75gjui0j.execute-api.us-east-1.amazonaws.com npm run build
+wrangler pages deploy out/ --project-name=finance-kentbenson
+```
+- Project: `finance-kentbenson` on Cloudflare Pages (free tier, $0)
+- Custom domain: `finance.kentbenson.net` (CNAME → `finance-kentbenson.pages.dev`)
+- Static export served from Cloudflare CDN, API calls go directly to AWS API Gateway
+- `npm run build` swaps `next.config.ts` to prod config (`output: 'export'`), then `npm run dev` restores dev config
+- CORS: `finance.kentbenson.net` is in Lambda `alex-api` CORS_ORIGINS env var
+- Routing: `frontend/public/_redirects` handles `/accounts/*` dynamic routes
+- Security headers: `frontend/public/_headers` (X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
 
 ### Terraform — each directory is independent with local state
 ```bash
@@ -58,6 +72,15 @@ uv run KB_github_UTILITIES/git_utilities/burn_it_down_start_new.py  # Delete bra
 ```
 
 ## Architecture
+
+### Deployment Architecture
+```
+Cloudflare Pages (finance.kentbenson.net)     CloudFront (d1hnrs9tdojzww.cloudfront.net)
+  → Static Next.js export                      → Static Next.js export
+  → Clerk auth (client-side JWT)                → Clerk auth (client-side JWT)
+  → API calls → AWS API Gateway                 → API calls → AWS API Gateway
+```
+Both frontends are identical static exports. Cloudflare Pages provides access from any network; CloudFront is the original AWS deployment.
 
 ### Agent Orchestration Flow
 ```
