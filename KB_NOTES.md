@@ -31,5 +31,9 @@ wrangler pages deploy out/ --project-name=finance-kentbenson
 - Cloudflare Pages: $0 (free tier)
 - Aurora: ~$43/mo (destroy when not working: `cd terraform/5_database && terraform destroy`)
 
+### Future enhancement
+- Add `pandas-ta` to Reporter/Charter agents for technical indicators (RSI, MACD, Bollinger Bands, SMA/EMA) computed from existing Polygon price data — no new API needed
+- Removed unused Finnhub and Alpha Vantage keys from .env
+
 ### Previous notes
 - Pre-existing ModuleNotFoundError: No module named 'src' on charter — all 5 agent tests have the same issue, unrelated to FRED work.
