@@ -1,8 +1,8 @@
-# Alex Application State — February 4, 2026
+# Investing_2026 Application State — February 4, 2026
 
-## What Alex Is
+## What Investing_2026 Is
 
-Alex (Agentic Learning Equities eXplainer) is a multi-agent SaaS financial planning platform deployed on AWS. It analyzes investment portfolios, generates reports with charts, runs retirement projections via Monte Carlo simulation, and autonomously researches market trends. Built as a capstone for Ed Donner's "AI in Production" Udemy course (Weeks 3-4), following 8 incremental deployment guides in `guides/`.
+Investing_2026 (Agentic Learning Equities eXplainer) is a multi-agent SaaS financial planning platform deployed on AWS. It analyzes investment portfolios, generates reports with charts, runs retirement projections via Monte Carlo simulation, and autonomously researches market trends. Built as a capstone for Ed Donner's "AI in Production" Udemy course (Weeks 3-4), following 8 incremental deployment guides in `guides/`.
 
 ---
 
@@ -14,8 +14,10 @@ User (browser)
     → FastAPI API (Lambda via API Gateway)
       → SQS job queue
         → Planner agent (Lambda) — orchestrator
+            ├→ Polygon.io   — real-time stock prices
+            ├→ FMP API      — company fundamentals (PE, dividends, sector, market cap)
             ├→ Tagger agent    — classifies instruments by asset class/region/sector
-            ├→ Reporter agent  — portfolio analysis + market context from S3 Vectors
+            ├→ Reporter agent  — portfolio analysis + fundamentals + S3 Vectors context
             ├→ Charter agent   — generates interactive chart data
             └→ Retirement agent — Monte Carlo retirement projections (1000+ scenarios)
 
@@ -27,6 +29,7 @@ Researcher agent (App Runner, every 2 hours)
 
 All AI agents use AWS Bedrock Nova Pro via LiteLLM + OpenAI Agents SDK
 All agents share Aurora PostgreSQL (Data API) via the alex-database package
+Market data APIs shared via the alex-market-data package (Polygon + FMP)
 ```
 
 ---
@@ -57,6 +60,7 @@ Each Terraform module is independent with local state. No remote backend.
 |-------|---------|------------|
 | **users** | User profiles | clerk_user_id (PK), display_name, years_until_retirement, target_retirement_income, asset_class_targets (JSONB), region_targets (JSONB) |
 | **instruments** | Financial reference data | symbol (PK), name, instrument_type, current_price, allocation by region/sector/asset_class (JSONB) |
+| **instrument_fundamentals** | FMP data cache (24h TTL) | symbol (PK, FK→instruments), company_name, sector, industry, market_cap, pe_ratio, pb_ratio, dividend_yield, roe, debt_to_equity, eps, beta, 52-week range, avg_volume, fetched_at |
 | **accounts** | Portfolio accounts | id (UUID), clerk_user_id (FK), account_name, account_purpose, cash_balance |
 | **positions** | Holdings per account | id (UUID), account_id (FK), symbol (FK), quantity (DECIMAL 20,8), as_of_date. Unique on (account_id, symbol) |
 | **jobs** | Analysis job tracking | id (UUID), clerk_user_id (FK), status (pending/running/completed/failed), report_payload, charts_payload, retirement_payload, summary_payload (all JSONB) |
@@ -65,17 +69,18 @@ Each Terraform module is independent with local state. No remote backend.
 
 ## Backend Agents (each is a uv project under `backend/`)
 
-| Agent | Runtime | Role |
+| Agent/Package | Runtime | Role |
 |-------|---------|------|
 | **api** | Lambda (FastAPI + Mangum) | REST API for frontend, Clerk auth, user/portfolio/job CRUD |
-| **planner** | Lambda | Orchestrator — receives SQS jobs, dispatches specialists, aggregates results |
+| **planner** | Lambda | Orchestrator — receives SQS jobs, fetches prices (Polygon) + fundamentals (FMP), dispatches specialists |
 | **tagger** | Lambda | Classifies instruments by asset class, region, sector (structured output, no tools) |
-| **reporter** | Lambda | Portfolio analysis with S3 Vectors market context (tool calling, no structured output) |
+| **reporter** | Lambda | Portfolio analysis with FMP fundamentals + S3 Vectors market context (tool calling, no structured output) |
 | **charter** | Lambda | Generates 4-6 chart specifications from analysis data |
 | **retirement** | Lambda | Monte Carlo simulations — withdrawal modeling, survival probability |
 | **researcher** | App Runner (FastAPI) | Autonomous web scraper, embeds findings into S3 Vectors |
 | **ingest** | Lambda | Document vectorization via SageMaker endpoint into S3 Vectors |
-| **database** | Shared library | SQLAlchemy + Aurora Data API, Pydantic models, used by all agents |
+| **database** | Shared library | Aurora Data API client, Pydantic models, used by all agents |
+| **market_data** | Shared library | FMP API client, Polygon price fetcher, unified price interface, used by planner/reporter/tagger |
 
 **Critical constraint**: LiteLLM + Bedrock cannot combine structured outputs and tool calling on the same agent.
 
@@ -128,14 +133,32 @@ After recreating infrastructure, always run `sync_arns.py` — Aurora secret ARN
 4. **OpenAI Agents SDK** (`openai-agents`) with LiteLLM — vendor-neutral agent framework running on Bedrock
 5. **Nova Pro** over Claude Sonnet — avoids Bedrock rate limits on Anthropic models
 6. **Pages Router** over App Router — simpler mental model for the course
+7. **Shared market_data package** — same pattern as database package; wraps Polygon + FMP, extensible for FRED/sentiment later
+8. **Separate instrument_fundamentals table** — avoids modifying existing instruments table; 24-hour staleness cache; graceful degradation if FMP unavailable
+
+---
+
+## Environment Variables
+
+| Variable | Used By | Purpose |
+|----------|---------|---------|
+| `POLYGON_API_KEY` | market_data, planner | Polygon.io stock prices |
+| `POLYGON_PLAN` | market_data, planner | "paid" or free tier |
+| `FMP_API_KEY` | market_data, planner | Financial Modeling Prep fundamentals |
+| `AURORA_CLUSTER_ARN` | database | Aurora Data API |
+| `AURORA_SECRET_ARN` | database | Aurora Data API auth |
+| `AURORA_DATABASE` | database | Database name (default: "alex") |
+| `BEDROCK_MODEL_ID` | all agents | Bedrock model for LLM calls |
+| `BEDROCK_REGION` | all agents | AWS region for Bedrock |
 
 ---
 
 ## What's Needed to Fully Run
 
 1. Restore `5_database`: `cd terraform/5_database && terraform apply`
-2. Run migrations: `uv run scripts/run_migrations.py`
+2. Run migrations: `cd backend/database && uv run python run_migrations.py` (includes instrument_fundamentals table)
 3. Sync ARNs: `uv run scripts/sync_arns.py`
-4. Repackage/redeploy agents: `cd backend/<agent> && uv run package_docker.py`
-5. Optionally restore `4_researcher`: `cd terraform/4_researcher && terraform apply`
-6. Verify: `cd scripts/AWS_START_STOP && uv run deployment_status.py`
+4. Set `FMP_API_KEY` in `.env` and Lambda environment variables
+5. Repackage/redeploy agents: `cd backend/<agent> && uv run package_docker.py`
+6. Optionally restore `4_researcher`: `cd terraform/4_researcher && terraform apply`
+7. Verify: `cd scripts/AWS_START_STOP && uv run deployment_status.py`
