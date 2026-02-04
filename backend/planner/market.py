@@ -1,10 +1,13 @@
 """
-Market data functions using polygon.io for fetching real-time prices.
+Market data functions using polygon.io for fetching real-time prices
+and FMP for fundamental data.
 """
 
+import os
 import logging
-from typing import Set
+from typing import Set, Dict, List, Any
 from prices import get_share_price
+from market_data.fmp import FMPClient
 
 logger = logging.getLogger()
 
@@ -137,3 +140,73 @@ def get_all_portfolio_symbols(db) -> Set[str]:
         logger.error(f"Market: Error fetching all symbols: {e}")
 
     return symbols
+
+
+def update_instrument_fundamentals(job_id: str, db) -> Dict[str, Any]:
+    """
+    Fetch FMP fundamentals for portfolio symbols and store in Aurora.
+    Only re-fetches if data is older than 24 hours.
+
+    Returns a dict of {symbol: fundamentals_dict} for passing to other agents.
+    """
+    fundamentals_map = {}
+
+    try:
+        fmp_api_key = os.getenv("FMP_API_KEY", "")
+        if not fmp_api_key:
+            logger.info("Market: FMP_API_KEY not set — skipping fundamentals fetch")
+            return fundamentals_map
+
+        fmp = FMPClient(api_key=fmp_api_key)
+
+        # Get the job to find the user's symbols
+        job = db.jobs.find_by_id(job_id)
+        if not job:
+            logger.error(f"Market: Job {job_id} not found for fundamentals update")
+            return fundamentals_map
+
+        user_id = job['clerk_user_id']
+        accounts = db.accounts.find_by_user(user_id)
+        symbols = set()
+
+        for account in accounts:
+            positions = db.positions.find_by_account(account['id'])
+            for position in positions:
+                symbols.add(position['symbol'])
+
+        if not symbols:
+            logger.info("Market: No symbols for fundamentals update")
+            return fundamentals_map
+
+        symbols_list = list(symbols)
+        logger.info(f"Market: Checking fundamentals for {len(symbols_list)} symbols")
+
+        # Only fetch stale data (older than 24 hours)
+        stale_symbols = db.fundamentals.get_stale_symbols(symbols_list, max_age_hours=24)
+
+        if stale_symbols:
+            logger.info(f"Market: Fetching FMP fundamentals for {len(stale_symbols)} stale symbols: {stale_symbols}")
+
+            for symbol in stale_symbols:
+                try:
+                    data = fmp.get_fundamentals(symbol)
+                    if data:
+                        db.fundamentals.upsert_fundamentals(data)
+                        logger.info(f"Market: Updated fundamentals for {symbol}")
+                except Exception as e:
+                    logger.warning(f"Market: FMP fetch failed for {symbol}: {e}")
+        else:
+            logger.info("Market: All fundamentals are fresh (< 24 hours)")
+
+        # Load all fundamentals (fresh + cached) for downstream agents
+        all_fundamentals = db.fundamentals.find_by_symbols(symbols_list)
+        for record in all_fundamentals:
+            fundamentals_map[record['symbol']] = record
+
+        logger.info(f"Market: Fundamentals available for {len(fundamentals_map)}/{len(symbols_list)} symbols")
+
+    except Exception as e:
+        logger.error(f"Market: Error updating fundamentals: {e}")
+        # Non-critical — continue without fundamentals
+
+    return fundamentals_map

@@ -282,3 +282,24 @@ class RebalanceRecommendation(BaseModel):
         ],
     )
     rationale: str = Field(description="Explanation of why these changes are recommended")
+
+
+class FundamentalsResponse(BaseModel):
+    """Schema for instrument fundamentals from FMP cache"""
+
+    symbol: str = Field(description="Ticker symbol")
+    company_name: Optional[str] = Field(None, description="Company name")
+    sector: Optional[str] = Field(None, description="Sector (e.g., Technology)")
+    industry: Optional[str] = Field(None, description="Industry (e.g., Consumer Electronics)")
+    market_cap: Optional[int] = Field(None, description="Market capitalization in dollars")
+    pe_ratio: Optional[float] = Field(None, description="Price-to-earnings ratio (TTM)")
+    pb_ratio: Optional[float] = Field(None, description="Price-to-book ratio (TTM)")
+    dividend_yield: Optional[float] = Field(None, description="Dividend yield (TTM)")
+    roe: Optional[float] = Field(None, description="Return on equity (TTM)")
+    debt_to_equity: Optional[float] = Field(None, description="Debt-to-equity ratio")
+    eps: Optional[float] = Field(None, description="Earnings per share (TTM)")
+    beta: Optional[float] = Field(None, description="Beta (volatility vs market)")
+    fifty_two_week_high: Optional[float] = Field(None, description="52-week high price")
+    fifty_two_week_low: Optional[float] = Field(None, description="52-week low price")
+    avg_volume: Optional[int] = Field(None, description="Average daily trading volume")
+    fetched_at: Optional[datetime] = Field(None, description="When data was last fetched")

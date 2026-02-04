@@ -7,9 +7,10 @@ from datetime import datetime, date
 from decimal import Decimal
 from .client import DataAPIClient
 from .schemas import (
-    InstrumentCreate, UserCreate, AccountCreate, 
+    InstrumentCreate, UserCreate, AccountCreate,
     PositionCreate, JobCreate, JobUpdate
 )
+from .market_data_models import InstrumentFundamentals
 
 
 class BaseModel:
@@ -310,6 +311,7 @@ class Database:
         self.accounts = Accounts(self.client)
         self.positions = Positions(self.client)
         self.jobs = Jobs(self.client)
+        self.fundamentals = InstrumentFundamentals(self.client)
     
     def execute_raw(self, sql: str, parameters: List[Dict] = None) -> Dict:
         """Execute raw SQL for complex queries"""

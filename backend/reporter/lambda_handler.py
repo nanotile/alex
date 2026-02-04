@@ -48,11 +48,12 @@ async def run_reporter_agent(
     user_data: Dict[str, Any],
     db=None,
     observability=None,
+    fundamentals: Dict[str, Any] = None,
 ) -> Dict[str, Any]:
     """Run the reporter agent to generate analysis."""
 
     # Create agent with tools and context
-    model, tools, task, context = create_agent(job_id, portfolio_data, user_data, db)
+    model, tools, task, context = create_agent(job_id, portfolio_data, user_data, db, fundamentals)
 
     # Run agent with context
     with trace("Reporter Agent"):
@@ -208,9 +209,24 @@ def lambda_handler(event, context):
                     logger.warning(f"Could not load user data: {e}. Using defaults.")
                     user_data = {"years_until_retirement": 30, "target_retirement_income": 80000}
 
+            # Load fundamentals from DB (populated by Planner's FMP fetch)
+            fundamentals = {}
+            try:
+                symbols = set()
+                for account in portfolio_data.get("accounts", []):
+                    for position in account.get("positions", []):
+                        if position.get("symbol"):
+                            symbols.add(position["symbol"])
+                if symbols:
+                    records = db.fundamentals.find_by_symbols(list(symbols))
+                    fundamentals = {r["symbol"]: r for r in records}
+                    logger.info(f"Reporter: Loaded fundamentals for {len(fundamentals)} symbols")
+            except Exception as e:
+                logger.warning(f"Reporter: Could not load fundamentals: {e}")
+
             # Run the agent
             result = asyncio.run(
-                run_reporter_agent(job_id, portfolio_data, user_data, db, observability)
+                run_reporter_agent(job_id, portfolio_data, user_data, db, observability, fundamentals)
             )
 
             logger.info(f"Reporter completed for job {job_id}")

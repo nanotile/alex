@@ -22,6 +22,7 @@ class ReporterContext:
     portfolio_data: Dict[str, Any]
     user_data: Dict[str, Any]
     db: Optional[Any] = None  # Database connection (optional for testing)
+    fundamentals: Optional[Dict[str, Dict[str, Any]]] = None  # {symbol: fundamentals_dict}
 
 
 def calculate_portfolio_metrics(portfolio_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -178,7 +179,76 @@ async def get_market_insights(
         return "Market insights unavailable - proceeding with standard analysis."
 
 
-def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[str, Any], db=None):
+def format_fundamentals_for_analysis(fundamentals: Dict[str, Dict[str, Any]]) -> str:
+    """Format fundamentals data into a readable block for the LLM prompt."""
+    if not fundamentals:
+        return "No fundamental data available for this portfolio."
+
+    lines = []
+    for symbol, data in fundamentals.items():
+        parts = [f"  {symbol}:"]
+
+        company = data.get("company_name")
+        if company:
+            parts.append(f"    Company: {company}")
+
+        sector = data.get("sector")
+        industry = data.get("industry")
+        if sector or industry:
+            parts.append(f"    Sector/Industry: {sector or 'N/A'} / {industry or 'N/A'}")
+
+        market_cap = data.get("market_cap")
+        if market_cap:
+            if market_cap >= 1_000_000_000_000:
+                cap_str = f"${market_cap / 1_000_000_000_000:.1f}T"
+            elif market_cap >= 1_000_000_000:
+                cap_str = f"${market_cap / 1_000_000_000:.1f}B"
+            else:
+                cap_str = f"${market_cap / 1_000_000:.0f}M"
+            parts.append(f"    Market Cap: {cap_str}")
+
+        pe = data.get("pe_ratio")
+        pb = data.get("pb_ratio")
+        if pe or pb:
+            val_parts = []
+            if pe:
+                val_parts.append(f"PE {float(pe):.1f}")
+            if pb:
+                val_parts.append(f"PB {float(pb):.1f}")
+            parts.append(f"    Valuation: {', '.join(val_parts)}")
+
+        div_yield = data.get("dividend_yield")
+        if div_yield:
+            parts.append(f"    Dividend Yield: {float(div_yield) * 100:.2f}%")
+
+        roe = data.get("roe")
+        if roe:
+            parts.append(f"    ROE: {float(roe) * 100:.1f}%")
+
+        d2e = data.get("debt_to_equity")
+        if d2e:
+            parts.append(f"    Debt/Equity: {float(d2e):.2f}")
+
+        eps = data.get("eps")
+        if eps:
+            parts.append(f"    EPS (TTM): ${float(eps):.2f}")
+
+        beta = data.get("beta")
+        if beta:
+            parts.append(f"    Beta: {float(beta):.2f}")
+
+        high = data.get("fifty_two_week_high")
+        low = data.get("fifty_two_week_low")
+        if high and low:
+            parts.append(f"    52-Week Range: ${float(low):.2f} - ${float(high):.2f}")
+
+        lines.append("\n".join(parts))
+
+    return "\n".join(lines)
+
+
+def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[str, Any],
+                 db=None, fundamentals: Dict[str, Dict[str, Any]] = None):
     """Create the reporter agent with tools and context."""
 
     # Get model configuration
@@ -193,7 +263,8 @@ def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[st
 
     # Create context
     context = ReporterContext(
-        job_id=job_id, portfolio_data=portfolio_data, user_data=user_data, db=db
+        job_id=job_id, portfolio_data=portfolio_data, user_data=user_data,
+        db=db, fundamentals=fundamentals
     )
 
     # Tools - only get_market_insights now, report saved in lambda_handler
@@ -202,23 +273,30 @@ def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[st
     # Format portfolio for analysis
     portfolio_summary = format_portfolio_for_analysis(portfolio_data, user_data)
 
+    # Format fundamentals for analysis
+    fundamentals_section = format_fundamentals_for_analysis(fundamentals or {})
+
     # Create task
     task = f"""Analyze this investment portfolio and write a comprehensive report.
 
 {portfolio_summary}
 
+Fundamental Data (from Financial Modeling Prep):
+{fundamentals_section}
+
 Your task:
 1. First, get market insights for the top holdings using get_market_insights()
 2. Analyze the portfolio's current state, strengths, and weaknesses
-3. Generate a detailed, professional analysis report in markdown format
+3. Use the fundamental data above to provide specific valuation analysis
+4. Generate a detailed, professional analysis report in markdown format
 
 The report should include:
 - Executive Summary
-- Portfolio Composition Analysis
-- Risk Assessment
-- Diversification Analysis
+- Portfolio Composition Analysis (with valuation metrics from fundamentals)
+- Risk Assessment (use beta and debt/equity data)
+- Diversification Analysis (use sector/industry data)
 - Retirement Readiness (based on user goals)
-- Recommendations
+- Recommendations (informed by valuations, yield, growth metrics)
 - Market Context (from insights)
 
 Provide your complete analysis as the final output in clear markdown format.

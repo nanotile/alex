@@ -23,7 +23,7 @@ from src import Database
 
 from templates import ORCHESTRATOR_INSTRUCTIONS
 from agent import create_agent, handle_missing_instruments, load_portfolio_summary
-from market import update_instrument_prices
+from market import update_instrument_prices, update_instrument_fundamentals
 from observability import observe
 
 logger = logging.getLogger()
@@ -51,9 +51,13 @@ async def run_orchestrator(job_id: str) -> None:
         logger.info("Planner: Updating instrument prices from market data")
         await asyncio.to_thread(update_instrument_prices, job_id, db)
 
+        # Fetch FMP fundamentals (stores in DB, returns dict for downstream agents)
+        logger.info("Planner: Fetching FMP fundamentals for portfolio")
+        fundamentals_map = await asyncio.to_thread(update_instrument_fundamentals, job_id, db)
+
         # Load portfolio summary (just statistics, not full data)
         portfolio_summary = await asyncio.to_thread(load_portfolio_summary, job_id, db)
-        
+
         # Create agent with tools and context
         model, tools, task, context = create_agent(job_id, portfolio_summary, db)
         

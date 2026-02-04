@@ -5,6 +5,7 @@ Provides database models, schemas, and Data API client
 
 from .client import DataAPIClient
 from .models import Database
+from .market_data_models import InstrumentFundamentals
 from .schemas import (
     # Types
     RegionType,
@@ -14,7 +15,7 @@ from .schemas import (
     JobType,
     JobStatus,
     AccountType,
-    
+
     # Create schemas (for inputs)
     InstrumentCreate,
     UserCreate,
@@ -22,9 +23,10 @@ from .schemas import (
     PositionCreate,
     JobCreate,
     JobUpdate,
-    
+
     # Response schemas (for outputs)
     InstrumentResponse,
+    FundamentalsResponse,
     PortfolioAnalysis,
     RebalanceRecommendation,
 )
@@ -32,6 +34,7 @@ from .schemas import (
 __all__ = [
     'Database',
     'DataAPIClient',
+    'InstrumentFundamentals',
     'InstrumentCreate',
     'UserCreate',
     'AccountCreate',
@@ -39,6 +42,7 @@ __all__ = [
     'JobCreate',
     'JobUpdate',
     'InstrumentResponse',
+    'FundamentalsResponse',
     'PortfolioAnalysis',
     'RebalanceRecommendation',
     'RegionType',

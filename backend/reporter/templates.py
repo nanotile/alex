@@ -42,16 +42,26 @@ User Context:
 - Years until retirement: {years_until_retirement}
 - Target retirement income: ${target_income:,.0f}/year
 
+Fundamental Data:
+{fundamentals_data}
+
 Market Context:
 {market_context}
 
 Create a detailed analysis covering:
 1. Executive Summary (3-4 key points)
-2. Portfolio Composition Analysis
+2. Portfolio Composition Analysis (use fundamental data for valuation context)
 3. Diversification Assessment
 4. Risk Profile Evaluation
 5. Retirement Readiness Analysis
 6. Specific Recommendations (5-7 actionable items)
+
+When fundamental data is available, incorporate it into your analysis:
+- Reference PE ratios, dividend yields, and valuation metrics
+- Compare holdings' sector exposure
+- Note any concentration risks based on industry/sector data
+- Use beta values to assess portfolio volatility
+- Highlight any unusually high or low valuations
 
 Format the report in markdown with clear sections and bullet points.
 Focus on practical insights that help the user improve their portfolio.
