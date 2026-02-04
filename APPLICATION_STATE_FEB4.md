@@ -39,17 +39,19 @@ Market data APIs shared via the alex-market-data package (Polygon + FMP + FRED +
 
 | Module | What It Deploys | Monthly Cost | Current Status |
 |--------|----------------|-------------|----------------|
-| **2_sagemaker** | SageMaker serverless FinBERT sentiment endpoint (ProsusAI/finbert, text-classification, 3GB) | ~$10 | Likely deployed |
-| **3_ingestion** | S3 Vectors bucket + Lambda ingestion + API Gateway (key auth, rate limited) | ~$1-5 | Likely deployed |
+| **2_sagemaker** | SageMaker serverless FinBERT sentiment endpoint (ProsusAI/finbert, text-classification, 3GB) | ~$10 | **Deployed** (Feb 4, 2026) |
+| **3_ingestion** | S3 Vectors bucket + Lambda ingestion (embedding + sentiment) + API Gateway (key auth, rate limited) | ~$1-5 | **Deployed** (Feb 4, 2026) |
 | **4_researcher** | ECR repo + App Runner service (1 vCPU, 2GB) for autonomous research | ~$51 | **Destroyed** (cost savings) |
 | **5_database** | Aurora Serverless v2 PostgreSQL 15.12 + Secrets Manager (Data API) | ~$65 | **Destroyed** (cost savings) |
 | **6_agents** | 5 Lambda functions + SQS queue + DLQ + IAM roles + CloudWatch logs | ~$1 | Likely deployed |
 | **7_frontend** | CloudFront + S3 static site + API Gateway Lambda proxy | ~$2 | Likely deployed |
 | **8_enterprise** | 2 CloudWatch dashboards | ~$5 | Likely deployed |
 
-**Last recorded state** (`scripts/.last_state.json`): Dec 18, 2025 — modules `4_researcher` and `5_database` destroyed to minimize costs.
+**Last recorded state**: Feb 4, 2026 — deployed FinBERT sentiment endpoint (2_sagemaker) and updated ingest Lambda (3_ingestion) with sentiment scoring. Modules `4_researcher` and `5_database` remain destroyed for cost savings.
 
 **Estimated running cost**: ~$19/month (without Aurora & Researcher). Full deployment: ~$135/month.
+
+**Note**: Terraform state for `3_ingestion` is out of sync — Lambda was updated directly via AWS CLI on Feb 4, 2026. Run `terraform import` or `terraform destroy && terraform apply` to re-sync state before making further terraform changes to that module.
 
 Each Terraform module is independent with local state. No remote backend.
 
