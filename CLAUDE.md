@@ -62,9 +62,12 @@ uv run KB_github_UTILITIES/git_utilities/burn_it_down_start_new.py  # Delete bra
 ### Agent Orchestration Flow
 ```
 User → NextJS/Clerk → FastAPI (Lambda) → SQS → Planner (Orchestrator)
-                                                  ├→ Tagger    ─→ Aurora DB
-                                                  ├→ Reporter  ─→ Aurora DB + S3 Vectors
-                                                  ├→ Charter   ─→ Aurora DB
+                                                  ├→ Polygon.io ─→ real-time prices
+                                                  ├→ FMP API    ─→ company fundamentals → Aurora DB
+                                                  ├→ FRED API   ─→ economic indicators → Aurora DB
+                                                  ├→ Tagger     ─→ Aurora DB
+                                                  ├→ Reporter   ─→ Aurora DB + S3 Vectors + economic context
+                                                  ├→ Charter    ─→ Aurora DB
                                                   └→ Retirement ─→ Aurora DB
 Researcher (App Runner) ← Reporter (for market research context)
 S3 Vectors ← SageMaker Embeddings (all-MiniLM-L6-v2)
@@ -162,7 +165,7 @@ Aurora (Guide 5) is the biggest cost. Destroy when not working: `cd terraform/5_
 ## Domain Context (from Cursor rules)
 
 - **Tagger**: Classifies instruments by asset class, region, sector, market cap. Allocations must sum to 100%.
-- **Planner**: Orchestrates staged workflow — data gathering, parallel agent dispatch, results aggregation. Integrates market pricing via polygon.io.
-- **Reporter**: Portfolio analysis with market research context from Researcher agent and S3 Vectors.
+- **Planner**: Orchestrates staged workflow — data gathering (Polygon prices, FMP fundamentals, FRED economic indicators), parallel agent dispatch, results aggregation.
+- **Reporter**: Portfolio analysis with FMP fundamentals, FRED economic context (rates, inflation, GDP, VIX), and market research from Researcher agent/S3 Vectors.
 - **Charter**: Generates visualizations and charts from analysis data.
 - **Retirement**: Monte Carlo simulations for retirement projections, dynamic withdrawal modeling, safe withdrawal rate calculation, portfolio survival probability.
