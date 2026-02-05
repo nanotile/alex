@@ -52,11 +52,12 @@ async def run_reporter_agent(
     economic_data: Dict[str, Any] = None,
     technical_data: Dict[str, Any] = None,
     data_sources: Dict[str, bool] = None,
+    historical_snapshots: list = None,
 ) -> Dict[str, Any]:
     """Run the reporter agent to generate analysis."""
 
     # Create agent with tools and context
-    model, tools, task, context = create_agent(job_id, portfolio_data, user_data, db, fundamentals, economic_data, technical_data, data_sources)
+    model, tools, task, context = create_agent(job_id, portfolio_data, user_data, db, fundamentals, economic_data, technical_data, data_sources, historical_snapshots)
 
     # Run agent with context
     with trace("Reporter Agent"):
@@ -299,9 +300,21 @@ def lambda_handler(event, context):
             except Exception as e:
                 logger.warning(f"Reporter: Could not load data_sources: {e}")
 
+            # Load historical snapshots for trend comparison
+            historical_snapshots = []
+            try:
+                hist_job = db.jobs.find_by_id(job_id)
+                if hist_job:
+                    hist_user_id = hist_job.get("clerk_user_id")
+                    if hist_user_id:
+                        historical_snapshots = db.analysis_history.find_recent(hist_user_id, limit=5)
+                        logger.info(f"Reporter: Loaded {len(historical_snapshots)} historical snapshots")
+            except Exception as e:
+                logger.warning(f"Reporter: Could not load historical snapshots: {e}")
+
             # Run the agent
             result = asyncio.run(
-                run_reporter_agent(job_id, portfolio_data, user_data, db, observability, fundamentals, economic_data, technical_data, data_sources)
+                run_reporter_agent(job_id, portfolio_data, user_data, db, observability, fundamentals, economic_data, technical_data, data_sources, historical_snapshots)
             )
 
             logger.info(f"Reporter completed for job {job_id}")

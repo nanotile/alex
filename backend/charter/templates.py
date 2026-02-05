@@ -54,6 +54,7 @@ CHART IDEAS TO IMPLEMENT:
 - Price vs moving averages (if technical indicators provided): grouped bar chart showing current price, SMA(50), and SMA(200) per symbol
 - Portfolio vs Benchmark RSI (if technical indicators provided and SPY/AGG data available): grouped bar chart comparing RSI values of top holdings against SPY and AGG benchmarks — helps users see if holdings are more or less overbought/oversold than the market
 - Dividend yield by holding (if fundamental/income data provided): horizontal bar chart showing dividend yield percentage per holding — color by yield level (green for >3%, blue for 1-3%, gray for 0%)
+- Portfolio Value Over Time (if historical trend data is mentioned in the analysis): bar chart with snapshot dates as labels and total portfolio values as data — shows how the portfolio has changed across analyses
 
 EXAMPLE OUTPUT (this is what you should generate):
 {

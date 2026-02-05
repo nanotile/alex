@@ -102,7 +102,50 @@ async def run_orchestrator(job_id: str) -> None:
             # Mark job as completed after all agents finish
             db.jobs.update_status(job_id, "completed")
             logger.info(f"Planner: Job {job_id} completed successfully")
-            
+
+            # Save analysis snapshot for historical tracking
+            try:
+                job = db.jobs.find_by_id(job_id)
+                user_id = job["clerk_user_id"] if job else None
+                if user_id:
+                    # Build top holdings list from portfolio summary
+                    top_holdings = []
+                    accounts = db.accounts.find_by_user(user_id)
+                    holdings_map = {}
+                    for account in accounts:
+                        positions = db.positions.find_by_account(account["id"])
+                        for pos in positions:
+                            sym = pos.get("symbol")
+                            price = float(pos.get("current_price", 0) or 0)
+                            qty = float(pos.get("quantity", 0))
+                            val = price * qty
+                            holdings_map[sym] = holdings_map.get(sym, 0) + val
+                    top_holdings = [
+                        {"symbol": s, "value": round(v, 2)}
+                        for s, v in sorted(holdings_map.items(), key=lambda x: -x[1])[:10]
+                    ]
+
+                    # Build simple asset allocation from technical_data
+                    tech_summary = {}
+                    for sym, ind in (technical_data or {}).items():
+                        if isinstance(ind, dict):
+                            tech_summary[sym] = {
+                                "rsi_14": ind.get("rsi_14"),
+                                "signal_summary": ind.get("signal_summary"),
+                            }
+
+                    db.analysis_history.save_snapshot(
+                        clerk_user_id=user_id,
+                        total_value=portfolio_summary.get("total_value", 0),
+                        num_positions=portfolio_summary.get("num_positions", 0),
+                        asset_allocation={},  # Could be enriched later
+                        top_holdings=top_holdings,
+                        technical_summary=tech_summary,
+                    )
+                    logger.info(f"Planner: Saved analysis snapshot for user {user_id}")
+            except Exception as snap_err:
+                logger.warning(f"Planner: Could not save analysis snapshot: {snap_err}")
+
     except Exception as e:
         logger.error(f"Planner: Error in orchestration: {e}", exc_info=True)
         db.jobs.update_status(job_id, 'failed', error_message=str(e))

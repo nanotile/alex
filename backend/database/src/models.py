@@ -13,6 +13,7 @@ from .schemas import (
 from .market_data_models import InstrumentFundamentals
 from .economic_models import EconomicIndicators
 from .technical_models import TechnicalIndicators
+from .analysis_history_models import AnalysisHistory
 
 
 class BaseModel:
@@ -316,7 +317,8 @@ class Database:
         self.fundamentals = InstrumentFundamentals(self.client)
         self.economic_indicators = EconomicIndicators(self.client)
         self.technical_indicators = TechnicalIndicators(self.client)
-    
+        self.analysis_history = AnalysisHistory(self.client)
+
     def execute_raw(self, sql: str, parameters: List[Dict] = None) -> Dict:
         """Execute raw SQL for complex queries"""
         return self.client.execute(sql, parameters)

@@ -464,6 +464,38 @@ def format_income_analysis(fundamentals: Dict[str, Dict[str, Any]], portfolio_da
     return "\n".join(lines)
 
 
+def format_historical_trend(snapshots: List[Dict[str, Any]]) -> str:
+    """Format previous analysis snapshots into a trend comparison section."""
+    if not snapshots or len(snapshots) < 2:
+        return ""
+
+    lines = ["Historical Portfolio Trend (previous analyses):"]
+    # Snapshots are newest-first from the DB query
+    for snap in reversed(snapshots):
+        date_str = snap.get("snapshot_date", "")
+        if isinstance(date_str, str) and len(date_str) >= 10:
+            date_str = date_str[:10]
+        total = snap.get("total_value")
+        positions = snap.get("num_positions")
+        if total is not None:
+            lines.append(f"  {date_str}: ${float(total):,.2f} ({positions} positions)")
+
+    # Calculate change from oldest to newest
+    newest = snapshots[0]
+    oldest = snapshots[-1]
+    try:
+        new_val = float(newest.get("total_value", 0))
+        old_val = float(oldest.get("total_value", 0))
+        if old_val > 0:
+            change_pct = ((new_val - old_val) / old_val) * 100
+            direction = "up" if change_pct >= 0 else "down"
+            lines.append(f"  Overall change: {direction} {abs(change_pct):.1f}% (${new_val - old_val:+,.2f})")
+    except (TypeError, ValueError):
+        pass
+
+    return "\n".join(lines)
+
+
 BENCHMARK_SYMBOLS = {"SPY": "S&P 500 ETF", "AGG": "US Aggregate Bond ETF"}
 
 
@@ -537,7 +569,8 @@ def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[st
                  db=None, fundamentals: Dict[str, Dict[str, Any]] = None,
                  economic_data: Dict[str, Dict[str, Any]] = None,
                  technical_data: Dict[str, Dict[str, Any]] = None,
-                 data_sources: Dict[str, bool] = None):
+                 data_sources: Dict[str, bool] = None,
+                 historical_snapshots: List[Dict[str, Any]] = None):
     """Create the reporter agent with tools and context."""
 
     # Get model configuration
@@ -578,6 +611,9 @@ def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[st
     # Format income analysis
     income_section = format_income_analysis(fundamentals or {}, portfolio_data)
 
+    # Format historical trend
+    trend_section = format_historical_trend(historical_snapshots or [])
+
     # Create task
     task = f"""Analyze this investment portfolio and write a comprehensive report.
 
@@ -593,6 +629,8 @@ Fundamental Data (from Financial Modeling Prep):
 {income_section}
 
 {benchmark_section}
+
+{trend_section}
 
 Your task:
 1. First, get market insights for the top holdings using get_market_insights()
@@ -615,6 +653,7 @@ The report should include:
 - Retirement Readiness (based on user goals)
 - Recommendations (informed by valuations, yield, growth metrics, macro environment, and technical signals)
 - Market Context (from insights)
+- Portfolio Trend (if historical data available, compare current portfolio value and composition against previous snapshots)
 
 Provide your complete analysis as the final output in clear markdown format.
 Make the report informative yet accessible to a retail investor.

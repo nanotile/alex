@@ -8,6 +8,7 @@ from .models import Database
 from .market_data_models import InstrumentFundamentals
 from .economic_models import EconomicIndicators
 from .technical_models import TechnicalIndicators
+from .analysis_history_models import AnalysisHistory
 from .schemas import (
     # Types
     RegionType,
@@ -40,6 +41,7 @@ __all__ = [
     'InstrumentFundamentals',
     'EconomicIndicators',
     'TechnicalIndicators',
+    'AnalysisHistory',
     'InstrumentCreate',
     'UserCreate',
     'AccountCreate',

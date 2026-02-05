@@ -166,6 +166,24 @@ statements = [
     )""",
     """CREATE TRIGGER update_technical_indicators_updated_at BEFORE UPDATE ON technical_indicators
         FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()""",
+
+    # --- Migration 006: analysis_history (portfolio metric snapshots) ---
+    """CREATE TABLE IF NOT EXISTS analysis_history (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        clerk_user_id VARCHAR(255) REFERENCES users(clerk_user_id) ON DELETE CASCADE,
+        snapshot_date TIMESTAMP DEFAULT NOW(),
+        total_value DECIMAL(14,2),
+        num_positions INTEGER,
+        asset_allocation JSONB DEFAULT '{}',
+        top_holdings JSONB DEFAULT '[]',
+        technical_summary JSONB DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+    )""",
+    "CREATE INDEX IF NOT EXISTS idx_analysis_history_user ON analysis_history(clerk_user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_analysis_history_date ON analysis_history(clerk_user_id, snapshot_date DESC)",
+    """CREATE TRIGGER update_analysis_history_updated_at BEFORE UPDATE ON analysis_history
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()""",
 ]
 
 print("🚀 Running database migrations...")
