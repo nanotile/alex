@@ -399,6 +399,45 @@ def format_technical_indicators(technical_data: Dict[str, Dict[str, Any]]) -> st
     return "\n".join(lines)
 
 
+BENCHMARK_SYMBOLS = {"SPY": "S&P 500 ETF", "AGG": "US Aggregate Bond ETF"}
+
+
+def format_benchmark_comparison(technical_data: Dict[str, Dict[str, Any]]) -> str:
+    """Format benchmark comparison data (SPY and AGG) for the LLM prompt."""
+    if not technical_data:
+        return ""
+
+    lines = ["Benchmark Comparison:"]
+    found = False
+    for symbol, label in BENCHMARK_SYMBOLS.items():
+        data = technical_data.get(symbol)
+        if not data:
+            continue
+        found = True
+        parts = [f"  {symbol} ({label}):"]
+        current = data.get("current_price")
+        if current:
+            parts.append(f"    Price: ${float(current):.2f}")
+        rsi = data.get("rsi_14")
+        if rsi is not None:
+            rsi_label = "OVERBOUGHT" if rsi > 70 else ("OVERSOLD" if rsi < 30 else "neutral")
+            parts.append(f"    RSI(14): {float(rsi):.1f} [{rsi_label}]")
+        sma50 = data.get("sma_50")
+        sma200 = data.get("sma_200")
+        if sma50:
+            parts.append(f"    SMA(50): ${float(sma50):.2f} [price {data.get('price_vs_sma50', 'N/A')}]")
+        if sma200:
+            parts.append(f"    SMA(200): ${float(sma200):.2f} [price {data.get('price_vs_sma200', 'N/A')}]")
+        summary = data.get("signal_summary")
+        if summary:
+            parts.append(f"    Signal: {summary}")
+        lines.append("\n".join(parts))
+
+    if not found:
+        return ""
+    return "\n".join(lines)
+
+
 def format_data_sources_footer(data_sources: Dict[str, bool]) -> str:
     """Format a footer indicating which data sources were available for the analysis."""
     if not data_sources:
@@ -468,6 +507,9 @@ def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[st
     # Format technical indicators
     technical_section = format_technical_indicators(technical_data or {})
 
+    # Format benchmark comparison
+    benchmark_section = format_benchmark_comparison(technical_data or {})
+
     # Create task
     task = f"""Analyze this investment portfolio and write a comprehensive report.
 
@@ -480,19 +522,23 @@ Fundamental Data (from Financial Modeling Prep):
 
 {technical_section}
 
+{benchmark_section}
+
 Your task:
 1. First, get market insights for the top holdings using get_market_insights()
 2. Analyze the portfolio's current state, strengths, and weaknesses
 3. Use the fundamental data above to provide specific valuation analysis
 4. Use economic indicators to contextualize portfolio risks — note yield curve status, inflation trends, rate environment impact on fixed income vs equities
 5. Use technical indicators to assess momentum and trend signals for each holding — reference RSI, MACD, moving average positioning, and Bollinger Band signals
-6. Generate a detailed, professional analysis report in markdown format
+6. Compare portfolio technical signals against SPY (equity benchmark) and AGG (bond benchmark) if benchmark data is available
+7. Generate a detailed, professional analysis report in markdown format
 
 The report should include:
 - Executive Summary
 - Portfolio Composition Analysis (with valuation metrics from fundamentals)
 - Economic Environment (summarize current rate, inflation, and growth conditions)
 - Technical Analysis (RSI, MACD, moving averages, Bollinger Bands for each holding — note overbought/oversold conditions, trend direction, momentum signals)
+- Benchmark Comparison (compare portfolio momentum and trend signals against SPY and AGG — are holdings outperforming or underperforming the broad market?)
 - Risk Assessment (use beta, debt/equity data, VIX level, and technical signals)
 - Diversification Analysis (use sector/industry data)
 - Retirement Readiness (based on user goals)

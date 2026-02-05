@@ -309,8 +309,12 @@ def compute_technical_indicators(job_id: str, db) -> tuple[Dict[str, Any], bool]
             logger.info("Market: No symbols for technical indicators")
             return technical_map, False
 
+        # Always include benchmark symbols for comparison
+        BENCHMARK_SYMBOLS = {"SPY", "AGG"}
+        symbols = symbols | BENCHMARK_SYMBOLS
+
         symbols_list = list(symbols)
-        logger.info(f"Market: Checking technical indicators for {len(symbols_list)} symbols")
+        logger.info(f"Market: Checking technical indicators for {len(symbols_list)} symbols (includes benchmarks SPY, AGG)")
 
         # Only compute for stale symbols (older than 1 hour)
         stale_symbols = db.technical_indicators.get_stale_symbols(symbols_list, max_age_hours=1)

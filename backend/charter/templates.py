@@ -52,6 +52,7 @@ CHART IDEAS TO IMPLEMENT:
 - Tax efficiency (tax-advantaged vs taxable accounts)
 - RSI gauge (if technical indicators provided): bar chart showing RSI values per symbol with overbought (70) and oversold (30) reference zones — use red for overbought, green for oversold, blue for neutral
 - Price vs moving averages (if technical indicators provided): grouped bar chart showing current price, SMA(50), and SMA(200) per symbol
+- Portfolio vs Benchmark RSI (if technical indicators provided and SPY/AGG data available): grouped bar chart comparing RSI values of top holdings against SPY and AGG benchmarks — helps users see if holdings are more or less overbought/oversold than the market
 
 EXAMPLE OUTPUT (this is what you should generate):
 {
@@ -145,5 +146,6 @@ def create_charter_task(portfolio_analysis: str, portfolio_data: dict) -> str:
 
 Create charts based on this portfolio data. Calculate aggregated values from the positions shown above.
 If technical indicators are provided above, include an RSI bar chart (values per symbol, color-coded by zone) and/or a price vs moving averages chart as one or two of your 4-6 charts.
+If SPY and AGG benchmark data is present in the technical indicators, consider adding a "Portfolio vs Benchmark RSI" grouped bar chart comparing top holdings' RSI against SPY and AGG.
 
 OUTPUT ONLY THE JSON OBJECT with 4-6 charts - no other text."""
