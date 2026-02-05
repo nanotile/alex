@@ -34,11 +34,11 @@ logger.setLevel(logging.INFO)
     wait=wait_exponential(multiplier=1, min=4, max=60),
     before_sleep=lambda retry_state: logger.info(f"Charter: Rate limit hit, retrying in {retry_state.next_action.sleep} seconds...")
 )
-async def run_charter_agent(job_id: str, portfolio_data: Dict[str, Any], db=None) -> Dict[str, Any]:
+async def run_charter_agent(job_id: str, portfolio_data: Dict[str, Any], db=None, technical_data: Dict[str, Any] = None) -> Dict[str, Any]:
     """Run the charter agent to generate visualization data."""
-    
+
     # Create agent without tools - will output JSON
-    model, task = create_agent(job_id, portfolio_data, db)
+    model, task = create_agent(job_id, portfolio_data, db, technical_data)
     
     # Run agent - no tools, no context
     with trace("Charter Agent"):
@@ -208,8 +208,27 @@ def lambda_handler(event, context):
 
             logger.info(f"Charter: Processing job {job_id}")
 
+            # Load technical indicators from DB (populated by Planner)
+            technical_data = {}
+            try:
+                symbols = set()
+                for account in portfolio_data.get("accounts", []):
+                    for position in account.get("positions", []):
+                        if position.get("symbol"):
+                            symbols.add(position["symbol"])
+                if symbols:
+                    records = db.technical_indicators.find_by_symbols(list(symbols))
+                    for r in records:
+                        ind = r.get("indicators")
+                        if isinstance(ind, str):
+                            ind = json.loads(ind)
+                        technical_data[r["symbol"]] = ind
+                    logger.info(f"Charter: Loaded technical indicators for {len(technical_data)} symbols")
+            except Exception as e:
+                logger.warning(f"Charter: Could not load technical indicators: {e}")
+
             # Run the agent
-            result = asyncio.run(run_charter_agent(job_id, portfolio_data, db))
+            result = asyncio.run(run_charter_agent(job_id, portfolio_data, db, technical_data))
 
             logger.info(f"Charter completed for job {job_id}: {result}")
 

@@ -6,6 +6,8 @@ requires-python = ">=3.12"
 dependencies = [
     "boto3>=1.40.1",
     "httpx>=0.28.0",
+    "pandas>=2.0",
+    "pandas-ta>=0.3.14b",
     "polygon-api-client>=1.15.3",
     "python-dotenv>=1.1.1",
 ]

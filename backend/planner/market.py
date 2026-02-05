@@ -1,6 +1,7 @@
 """
 Market data functions using polygon.io for fetching real-time prices,
-FMP for fundamental data, and FRED for macro-economic indicators.
+FMP for fundamental data, FRED for macro-economic indicators,
+and pandas-ta for technical indicators.
 """
 
 import os
@@ -9,6 +10,7 @@ from typing import Set, Dict, List, Any
 from prices import get_share_price
 from market_data.fmp import FMPClient
 from market_data.fred import FREDClient, FRED_SERIES
+from market_data.technical import get_technical_indicators
 
 logger = logging.getLogger()
 
@@ -271,3 +273,76 @@ def update_economic_indicators(db) -> Dict[str, Any]:
         # Non-critical — continue without economic data
 
     return indicators_map
+
+
+def compute_technical_indicators(job_id: str, db) -> Dict[str, Any]:
+    """
+    Compute technical indicators (RSI, MACD, Bollinger Bands, SMA/EMA) for portfolio symbols
+    using Polygon.io historical data and pandas-ta.
+    Caches results in Aurora with a 1-hour staleness window.
+
+    Returns a dict of {symbol: indicators_dict} for passing to other agents.
+    """
+    technical_map = {}
+
+    try:
+        polygon_api_key = os.getenv("POLYGON_API_KEY", "")
+        if not polygon_api_key:
+            logger.info("Market: POLYGON_API_KEY not set — skipping technical indicators")
+            return technical_map
+
+        # Get the job to find the user's symbols
+        job = db.jobs.find_by_id(job_id)
+        if not job:
+            logger.error(f"Market: Job {job_id} not found for technical indicators")
+            return technical_map
+
+        user_id = job['clerk_user_id']
+        accounts = db.accounts.find_by_user(user_id)
+        symbols = set()
+
+        for account in accounts:
+            positions = db.positions.find_by_account(account['id'])
+            for position in positions:
+                symbols.add(position['symbol'])
+
+        if not symbols:
+            logger.info("Market: No symbols for technical indicators")
+            return technical_map
+
+        symbols_list = list(symbols)
+        logger.info(f"Market: Checking technical indicators for {len(symbols_list)} symbols")
+
+        # Only compute for stale symbols (older than 1 hour)
+        stale_symbols = db.technical_indicators.get_stale_symbols(symbols_list, max_age_hours=1)
+
+        if stale_symbols:
+            logger.info(f"Market: Computing technical indicators for {len(stale_symbols)} stale symbols: {stale_symbols}")
+
+            computed = get_technical_indicators(stale_symbols)
+
+            for symbol, indicators in computed.items():
+                try:
+                    db.technical_indicators.upsert_indicators(symbol, indicators)
+                    logger.info(f"Market: Stored technical indicators for {symbol}")
+                except Exception as e:
+                    logger.warning(f"Market: Failed to store indicators for {symbol}: {e}")
+        else:
+            logger.info("Market: All technical indicators are fresh (< 1 hour)")
+
+        # Load all indicators (fresh + cached) for downstream agents
+        all_records = db.technical_indicators.find_by_symbols(symbols_list)
+        for record in all_records:
+            indicators = record.get("indicators")
+            if isinstance(indicators, str):
+                import json
+                indicators = json.loads(indicators)
+            technical_map[record["symbol"]] = indicators
+
+        logger.info(f"Market: Technical indicators available for {len(technical_map)}/{len(symbols_list)} symbols")
+
+    except Exception as e:
+        logger.error(f"Market: Error computing technical indicators: {e}")
+        # Non-critical — continue without technical data
+
+    return technical_map

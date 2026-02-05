@@ -24,6 +24,7 @@ class ReporterContext:
     db: Optional[Any] = None  # Database connection (optional for testing)
     fundamentals: Optional[Dict[str, Dict[str, Any]]] = None  # {symbol: fundamentals_dict}
     economic_data: Optional[Dict[str, Dict[str, Any]]] = None  # {series_id: indicator_dict}
+    technical_indicators: Optional[Dict[str, Dict[str, Any]]] = None  # {symbol: indicators_dict}
 
 
 def calculate_portfolio_metrics(portfolio_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -343,9 +344,65 @@ def format_economic_context(economic_data: Dict[str, Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def format_technical_indicators(technical_data: Dict[str, Dict[str, Any]]) -> str:
+    """Format technical indicators into a readable block for the LLM prompt."""
+    if not technical_data:
+        return "No technical indicator data available."
+
+    lines = ["Technical Indicators (computed via pandas-ta):"]
+
+    for symbol, data in technical_data.items():
+        parts = [f"  {symbol}:"]
+
+        current = data.get("current_price")
+        if current:
+            parts.append(f"    Current Price: ${float(current):.2f}")
+
+        rsi = data.get("rsi_14")
+        if rsi is not None:
+            rsi_label = "OVERBOUGHT" if rsi > 70 else ("OVERSOLD" if rsi < 30 else "neutral")
+            parts.append(f"    RSI(14): {float(rsi):.1f} [{rsi_label}]")
+
+        macd = data.get("macd")
+        macd_signal = data.get("macd_signal")
+        macd_hist = data.get("macd_histogram")
+        if macd is not None and macd_signal is not None:
+            cross = "bullish" if macd_hist and float(macd_hist) > 0 else "bearish"
+            parts.append(f"    MACD: {float(macd):.4f} / Signal: {float(macd_signal):.4f} / Hist: {float(macd_hist):.4f} [{cross}]")
+
+        bb_upper = data.get("bb_upper")
+        bb_lower = data.get("bb_lower")
+        bb_pctb = data.get("bb_pctb")
+        if bb_upper is not None and bb_lower is not None:
+            pctb_str = f", %B: {float(bb_pctb):.2f}" if bb_pctb is not None else ""
+            parts.append(f"    Bollinger Bands: ${float(bb_lower):.2f} - ${float(bb_upper):.2f}{pctb_str}")
+
+        sma50 = data.get("sma_50")
+        sma200 = data.get("sma_200")
+        if sma50 is not None:
+            vs50 = data.get("price_vs_sma50", "")
+            parts.append(f"    SMA(50): ${float(sma50):.2f} [price {vs50}]")
+        if sma200 is not None:
+            vs200 = data.get("price_vs_sma200", "")
+            parts.append(f"    SMA(200): ${float(sma200):.2f} [price {vs200}]")
+
+        ema20 = data.get("ema_20")
+        if ema20 is not None:
+            parts.append(f"    EMA(20): ${float(ema20):.2f}")
+
+        summary = data.get("signal_summary")
+        if summary:
+            parts.append(f"    Signal: {summary}")
+
+        lines.append("\n".join(parts))
+
+    return "\n".join(lines)
+
+
 def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[str, Any],
                  db=None, fundamentals: Dict[str, Dict[str, Any]] = None,
-                 economic_data: Dict[str, Dict[str, Any]] = None):
+                 economic_data: Dict[str, Dict[str, Any]] = None,
+                 technical_data: Dict[str, Dict[str, Any]] = None):
     """Create the reporter agent with tools and context."""
 
     # Get model configuration
@@ -361,7 +418,8 @@ def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[st
     # Create context
     context = ReporterContext(
         job_id=job_id, portfolio_data=portfolio_data, user_data=user_data,
-        db=db, fundamentals=fundamentals, economic_data=economic_data
+        db=db, fundamentals=fundamentals, economic_data=economic_data,
+        technical_indicators=technical_data
     )
 
     # Tools - only get_market_insights now, report saved in lambda_handler
@@ -376,6 +434,9 @@ def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[st
     # Format economic indicators
     economic_section = format_economic_context(economic_data or {})
 
+    # Format technical indicators
+    technical_section = format_technical_indicators(technical_data or {})
+
     # Create task
     task = f"""Analyze this investment portfolio and write a comprehensive report.
 
@@ -386,21 +447,25 @@ Fundamental Data (from Financial Modeling Prep):
 
 {economic_section}
 
+{technical_section}
+
 Your task:
 1. First, get market insights for the top holdings using get_market_insights()
 2. Analyze the portfolio's current state, strengths, and weaknesses
 3. Use the fundamental data above to provide specific valuation analysis
 4. Use economic indicators to contextualize portfolio risks — note yield curve status, inflation trends, rate environment impact on fixed income vs equities
-5. Generate a detailed, professional analysis report in markdown format
+5. Use technical indicators to assess momentum and trend signals for each holding — reference RSI, MACD, moving average positioning, and Bollinger Band signals
+6. Generate a detailed, professional analysis report in markdown format
 
 The report should include:
 - Executive Summary
 - Portfolio Composition Analysis (with valuation metrics from fundamentals)
 - Economic Environment (summarize current rate, inflation, and growth conditions)
-- Risk Assessment (use beta, debt/equity data, and VIX level)
+- Technical Analysis (RSI, MACD, moving averages, Bollinger Bands for each holding — note overbought/oversold conditions, trend direction, momentum signals)
+- Risk Assessment (use beta, debt/equity data, VIX level, and technical signals)
 - Diversification Analysis (use sector/industry data)
 - Retirement Readiness (based on user goals)
-- Recommendations (informed by valuations, yield, growth metrics, and macro environment)
+- Recommendations (informed by valuations, yield, growth metrics, macro environment, and technical signals)
 - Market Context (from insights)
 
 Provide your complete analysis as the final output in clear markdown format.

@@ -156,6 +156,16 @@ statements = [
     )""",
     """CREATE TRIGGER update_economic_indicators_updated_at BEFORE UPDATE ON economic_indicators
         FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()""",
+
+    # --- Migration 005: technical_indicators (pandas-ta data cache) ---
+    """CREATE TABLE IF NOT EXISTS technical_indicators (
+        symbol VARCHAR(20) PRIMARY KEY,
+        indicators JSONB NOT NULL,
+        computed_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+    )""",
+    """CREATE TRIGGER update_technical_indicators_updated_at BEFORE UPDATE ON technical_indicators
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()""",
 ]
 
 print("🚀 Running database migrations...")

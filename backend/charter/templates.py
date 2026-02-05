@@ -43,6 +43,8 @@ CHART IDEAS TO IMPLEMENT:
 - Account type allocation (401k, IRA, Taxable, etc.)
 - Top holdings concentration (largest 5-10 positions)
 - Tax efficiency (tax-advantaged vs taxable accounts)
+- RSI gauge (if technical indicators provided): bar chart showing RSI values per symbol with overbought (70) and oversold (30) reference zones — use red for overbought, green for oversold, blue for neutral
+- Price vs moving averages (if technical indicators provided): grouped bar chart showing current price, SMA(50), and SMA(200) per symbol
 
 EXAMPLE OUTPUT (this is what you should generate):
 {
@@ -124,5 +126,6 @@ def create_charter_task(portfolio_analysis: str, portfolio_data: dict) -> str:
 {portfolio_analysis}
 
 Create charts based on this portfolio data. Calculate aggregated values from the positions shown above.
+If technical indicators are provided above, include an RSI bar chart (values per symbol, color-coded by zone) and/or a price vs moving averages chart as one or two of your 4-6 charts.
 
 OUTPUT ONLY THE JSON OBJECT with 4-6 charts - no other text."""

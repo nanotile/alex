@@ -50,11 +50,12 @@ async def run_reporter_agent(
     observability=None,
     fundamentals: Dict[str, Any] = None,
     economic_data: Dict[str, Any] = None,
+    technical_data: Dict[str, Any] = None,
 ) -> Dict[str, Any]:
     """Run the reporter agent to generate analysis."""
 
     # Create agent with tools and context
-    model, tools, task, context = create_agent(job_id, portfolio_data, user_data, db, fundamentals, economic_data)
+    model, tools, task, context = create_agent(job_id, portfolio_data, user_data, db, fundamentals, economic_data, technical_data)
 
     # Run agent with context
     with trace("Reporter Agent"):
@@ -234,9 +235,24 @@ def lambda_handler(event, context):
             except Exception as e:
                 logger.warning(f"Reporter: Could not load economic indicators: {e}")
 
+            # Load technical indicators from DB (populated by Planner's pandas-ta computation)
+            technical_data = {}
+            try:
+                if symbols:
+                    records = db.technical_indicators.find_by_symbols(list(symbols))
+                    for r in records:
+                        ind = r.get("indicators")
+                        if isinstance(ind, str):
+                            import json as _json
+                            ind = _json.loads(ind)
+                        technical_data[r["symbol"]] = ind
+                    logger.info(f"Reporter: Loaded technical indicators for {len(technical_data)} symbols")
+            except Exception as e:
+                logger.warning(f"Reporter: Could not load technical indicators: {e}")
+
             # Run the agent
             result = asyncio.run(
-                run_reporter_agent(job_id, portfolio_data, user_data, db, observability, fundamentals, economic_data)
+                run_reporter_agent(job_id, portfolio_data, user_data, db, observability, fundamentals, economic_data, technical_data)
             )
 
             logger.info(f"Reporter completed for job {job_id}")

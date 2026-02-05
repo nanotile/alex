@@ -7,6 +7,7 @@ from .client import DataAPIClient
 from .models import Database
 from .market_data_models import InstrumentFundamentals
 from .economic_models import EconomicIndicators
+from .technical_models import TechnicalIndicators
 from .schemas import (
     # Types
     RegionType,
@@ -38,6 +39,7 @@ __all__ = [
     'DataAPIClient',
     'InstrumentFundamentals',
     'EconomicIndicators',
+    'TechnicalIndicators',
     'InstrumentCreate',
     'UserCreate',
     'AccountCreate',

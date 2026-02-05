@@ -23,7 +23,7 @@ from src import Database
 
 from templates import ORCHESTRATOR_INSTRUCTIONS
 from agent import create_agent, handle_missing_instruments, load_portfolio_summary
-from market import update_instrument_prices, update_instrument_fundamentals, update_economic_indicators
+from market import update_instrument_prices, update_instrument_fundamentals, update_economic_indicators, compute_technical_indicators
 from observability import observe
 
 logger = logging.getLogger()
@@ -58,6 +58,10 @@ async def run_orchestrator(job_id: str) -> None:
         # Fetch FRED economic indicators (shared across all portfolios)
         logger.info("Planner: Fetching FRED economic indicators")
         economic_data = await asyncio.to_thread(update_economic_indicators, db)
+
+        # Compute technical indicators (Polygon history -> pandas-ta -> Aurora)
+        logger.info("Planner: Computing technical indicators")
+        technical_data = await asyncio.to_thread(compute_technical_indicators, job_id, db)
 
         # Load portfolio summary (just statistics, not full data)
         portfolio_summary = await asyncio.to_thread(load_portfolio_summary, job_id, db)

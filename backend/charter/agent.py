@@ -13,7 +13,7 @@ from templates import CHARTER_INSTRUCTIONS, create_charter_task
 logger = logging.getLogger()
 
 
-def analyze_portfolio(portfolio_data: Dict[str, Any]) -> str:
+def analyze_portfolio(portfolio_data: Dict[str, Any], technical_data: Dict[str, Any] = None) -> str:
     """
     Analyze the portfolio to understand its composition and calculate key metrics.
     Returns detailed breakdown of positions, accounts, and calculated allocations.
@@ -134,31 +134,57 @@ def analyze_portfolio(portfolio_data: Dict[str, Any]) -> str:
     for sector, value in sorted(sectors.items(), key=lambda x: x[1], reverse=True)[:10]:
         result.append(f"  {sector}: ${value:,.2f}")
 
+    # Technical indicators summary (for generating technical charts)
+    if technical_data:
+        result.append("\nTechnical Indicators:")
+        for symbol, data in technical_data.items():
+            parts = [f"  {symbol}:"]
+            rsi = data.get("rsi_14")
+            if rsi is not None:
+                parts.append(f"    RSI(14): {float(rsi):.1f}")
+            macd_hist = data.get("macd_histogram")
+            if macd_hist is not None:
+                parts.append(f"    MACD Histogram: {float(macd_hist):.4f}")
+            sma50 = data.get("sma_50")
+            sma200 = data.get("sma_200")
+            current = data.get("current_price")
+            if sma50 is not None and current is not None:
+                parts.append(f"    SMA(50): ${float(sma50):.2f} (price {'above' if float(current) > float(sma50) else 'below'})")
+            if sma200 is not None and current is not None:
+                parts.append(f"    SMA(200): ${float(sma200):.2f} (price {'above' if float(current) > float(sma200) else 'below'})")
+            bb_pctb = data.get("bb_pctb")
+            if bb_pctb is not None:
+                parts.append(f"    Bollinger %B: {float(bb_pctb):.2f}")
+            summary = data.get("signal_summary")
+            if summary:
+                parts.append(f"    Signal: {summary}")
+            result.append("\n".join(parts))
+
     return "\n".join(result)
 
 
-def create_agent(job_id: str, portfolio_data: Dict[str, Any], db=None):
+def create_agent(job_id: str, portfolio_data: Dict[str, Any], db=None, technical_data: Dict[str, Any] = None):
     """Create the charter agent without tools - will output JSON directly."""
-    
+
     # Get model configuration
     model_id = os.getenv("BEDROCK_MODEL_ID", "us.anthropic.claude-3-7-sonnet-20250219-v1:0")
     # Set region for LiteLLM Bedrock calls
     bedrock_region = os.getenv("BEDROCK_REGION", "us-west-2")
     os.environ["AWS_REGION_NAME"] = bedrock_region
-    
+
     logger.info(f"Charter: Creating agent with model_id={model_id}, region={bedrock_region}")
     logger.info(f"Charter: Job ID: {job_id}")
-    
+
     model = LitellmModel(model=f"bedrock/{model_id}")
-    
-    # Analyze the portfolio upfront
-    portfolio_analysis = analyze_portfolio(portfolio_data)
+
+    # Analyze the portfolio upfront (include technical indicators)
+    portfolio_analysis = analyze_portfolio(portfolio_data, technical_data)
     logger.info(f"Charter: Portfolio analysis generated, length: {len(portfolio_analysis)}")
-    
+
     # Create the task using template
     task = create_charter_task(portfolio_analysis, portfolio_data)
-    
+
     logger.info(f"Charter: Task created, length: {len(task)} characters")
-    
+
     # Return model and task (no tools or context needed)
     return model, task
