@@ -19,6 +19,9 @@ import boto3
 from mangum import Mangum
 from dotenv import load_dotenv
 from fastapi_clerk_auth import ClerkConfig, ClerkHTTPBearer, HTTPAuthorizationCredentials
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from src import Database
 from src.schemas import (
@@ -36,12 +39,17 @@ load_dotenv(override=True)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Alex Financial Advisor API",
     description="Backend API for AI-powered financial planning",
     version="1.0.0"
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS configuration
 # Get origins from CORS_ORIGINS env var (comma-separated) or fall back to localhost
@@ -144,7 +152,8 @@ class AnalyzeResponse(BaseModel):
 # API Routes
 
 @app.get("/")
-async def root():
+@limiter.limit("60/minute")
+async def root(request: Request):
     """Root endpoint - API information"""
     return {
         "name": "Alex Financial Advisor API",
@@ -154,7 +163,8 @@ async def root():
     }
 
 @app.get("/health")
-async def health_check():
+@limiter.limit("60/minute")
+async def health_check(request: Request):
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
@@ -243,7 +253,8 @@ async def list_accounts(clerk_user_id: str = Depends(get_current_user_id)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/accounts")
-async def create_account(account: AccountCreate, clerk_user_id: str = Depends(get_current_user_id)):
+@limiter.limit("30/minute")
+async def create_account(request: Request, account: AccountCreate = None, clerk_user_id: str = Depends(get_current_user_id)):
     """Create new account"""
 
     try:
@@ -361,7 +372,8 @@ async def list_positions(account_id: str, clerk_user_id: str = Depends(get_curre
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/positions")
-async def create_position(position: PositionCreate, clerk_user_id: str = Depends(get_current_user_id)):
+@limiter.limit("30/minute")
+async def create_position(request: Request, position: PositionCreate = None, clerk_user_id: str = Depends(get_current_user_id)):
     """Create position"""
 
     try:
@@ -500,7 +512,8 @@ async def list_instruments(clerk_user_id: str = Depends(get_current_user_id)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
-async def trigger_analysis(request: AnalyzeRequest, clerk_user_id: str = Depends(get_current_user_id)):
+@limiter.limit("5/minute")
+async def trigger_analysis(request: Request, analyze_request: AnalyzeRequest = AnalyzeRequest(), clerk_user_id: str = Depends(get_current_user_id)):
     """Trigger portfolio analysis"""
 
     try:
@@ -514,7 +527,7 @@ async def trigger_analysis(request: AnalyzeRequest, clerk_user_id: str = Depends
         job_id = db.jobs.create_job(
             clerk_user_id=clerk_user_id,
             job_type="portfolio_analysis",
-            request_payload=request.model_dump()
+            request_payload=analyze_request.model_dump()
         )
 
         # Get the created job
@@ -525,8 +538,8 @@ async def trigger_analysis(request: AnalyzeRequest, clerk_user_id: str = Depends
             message = {
                 'job_id': str(job_id),
                 'clerk_user_id': clerk_user_id,
-                'analysis_type': request.analysis_type,
-                'options': request.options
+                'analysis_type': analyze_request.analysis_type,
+                'options': analyze_request.options
             }
 
             sqs_client.send_message(
@@ -616,7 +629,8 @@ async def reset_accounts(clerk_user_id: str = Depends(get_current_user_id)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/populate-test-data")
-async def populate_test_data(clerk_user_id: str = Depends(get_current_user_id)):
+@limiter.limit("5/minute")
+async def populate_test_data(request: Request, clerk_user_id: str = Depends(get_current_user_id)):
     """Populate test data for the current user"""
 
     try:
@@ -778,4 +792,4 @@ handler = Mangum(app)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
