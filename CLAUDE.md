@@ -8,6 +8,13 @@ Alex (Agentic Learning Equities eXplainer) is a multi-agent SaaS financial plann
 
 ## Commands
 
+### Session Startup/Shutdown
+```bash
+python3 kb_start.py          # Master startup: detects VM IP, syncs ARNs, updates CORS, starts API + frontend
+python3 kb_stop.py           # Graceful shutdown of all services
+```
+`kb_start.py` handles IP changes, ARN sync, CORS config, kills stale processes on ports 3000/8000, and starts both services. Always use this instead of starting services manually.
+
 ### Backend (Python/uv) — each agent dir is its own uv project
 ```bash
 cd backend/<agent> && uv run pytest test_simple.py          # Local tests with mocks (MOCK_LAMBDAS=true)
@@ -15,7 +22,17 @@ cd backend/<agent> && uv run pytest test_full.py             # Deployment tests 
 cd backend/<agent> && uv run pytest test_simple.py::test_fn -v  # Single test
 cd backend/<agent> && uv run package_docker.py               # Package for Lambda (Docker must be running!)
 cd backend/<agent> && uv add <package>                       # Add dependency
+cd backend && uv run deploy_all_lambdas.py                   # Deploy all 5 agents via Terraform
+cd backend && uv run deploy_all_lambdas.py --package         # Re-package + deploy all agents
 ```
+
+### Database Migrations
+```bash
+cd backend/database && uv run run_migrations.py              # Apply all migrations (27+ statements)
+cd backend/database && uv run verify_database.py             # Validate DB schema
+cd backend/database && uv run seed_data.py                   # Seed initial data
+```
+Migration files are in `backend/database/migrations/`. After recreating Aurora, always run migrations before testing.
 
 ### Frontend (NextJS — Pages Router, not App Router)
 ```bash
@@ -25,17 +42,16 @@ cd frontend && npm test             # Jest unit tests
 cd frontend && npm run test:e2e     # Playwright E2E tests
 cd frontend && npm run lint         # Lint
 ```
+Build uses a config swap: `npm run build` copies `next.config.prod.ts` (with `output: 'export'`) over `next.config.ts`, then `npm run dev` restores `next.config.dev.ts` (SSR mode).
 
 ### Cloudflare Pages Deployment (finance.kentbenson.net)
 ```bash
-# Build with API URL baked in, then deploy
 cd frontend && NEXT_PUBLIC_API_URL=https://0b75gjui0j.execute-api.us-east-1.amazonaws.com npm run build
 wrangler pages deploy out/ --project-name=finance-kentbenson
 ```
 - Project: `finance-kentbenson` on Cloudflare Pages (free tier, $0)
 - Custom domain: `finance.kentbenson.net` (CNAME → `finance-kentbenson.pages.dev`)
 - Static export served from Cloudflare CDN, API calls go directly to AWS API Gateway
-- `npm run build` swaps `next.config.ts` to prod config (`output: 'export'`), then `npm run dev` restores dev config
 - CORS: `finance.kentbenson.net` is in Lambda `alex-api` CORS_ORIGINS env var
 - Routing: `frontend/public/_redirects` handles `/accounts/*` dynamic routes
 - Security headers: `frontend/public/_headers` (X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
@@ -97,6 +113,14 @@ S3 Vectors ← Bedrock Titan Embeddings + SageMaker FinBERT Sentiment (ProsusAI/
 All agents use AWS Bedrock Nova Pro via LiteLLM
 ```
 
+### Shared Database Module
+`backend/database/` is a shared library (not a deployed agent). All agents import it for Aurora Data API access:
+- `src/client.py` — Aurora Data API connection wrapper
+- `src/models.py` — SQLAlchemy ORM models
+- `src/schemas.py` — Pydantic schemas
+- `migrations/` — 27+ SQL migration files (run via `run_migrations.py`)
+- Each agent's `package_docker.py` bundles the database module into its Lambda zip
+
 ### Agent Code Pattern (every agent follows this)
 Each agent directory contains: `lambda_handler.py`, `agent.py`, `templates.py`, `test_simple.py`, `test_full.py`, `package_docker.py`
 
@@ -131,6 +155,13 @@ result = await Runner.run(agent, input=task, context=context)
 async def my_tool(wrapper: RunContextWrapper[ReporterContext], arg: str) -> str: ...
 ```
 
+### Planner Orchestration Stages
+The Planner agent runs a staged workflow, not a single prompt:
+1. **Data gathering** (sequential): Polygon.io prices → FMP fundamentals → FRED economic indicators
+2. **Instrument classification**: Tagger agent classifies all holdings
+3. **Parallel agent dispatch**: Reporter, Charter, and Retirement run concurrently
+4. **Results aggregation**: Planner collects all outputs into final response
+
 ### Key Infrastructure Decisions
 - **Aurora Data API** (not VPC): simpler Lambda integration, no connection pools, slight latency tradeoff
 - **S3 Vectors** (not OpenSearch): 90% cheaper, serverless
@@ -158,6 +189,14 @@ Aurora (Guide 5) is the biggest cost. Destroy when not working: `cd terraform/5_
 - Each backend agent dir has its own `pyproject.toml`. Nested uv projects are fine.
 - Correct package: `uv add openai-agents` (not `agents`)
 
+### Lambda Packaging (250MB limit)
+- All 5 agents package to ~82MB zipped via Docker-based `package_docker.py`
+- Packages >50MB deploy via S3 upload fallback (not direct zip upload)
+- 30+ packages explicitly excluded (numba, llvmlite, numpy, pandas, unused AI provider SDKs)
+- **Cannot add heavy packages** (pandas, numpy, scipy) without switching to Lambda container images (10GB limit)
+- `backend/market_data/` technical indicators module is excluded from Lambda for this reason
+- Each `package_docker.py` has `EXCLUDE_PREFIXES` — check before adding new dependencies
+
 ### Platform
 - Student may be on Windows, Mac, or Linux. Prefer Python scripts over shell scripts.
 - Docker must be running for `package_docker.py`. Docker build targets `linux/amd64`.
@@ -179,16 +218,24 @@ Aurora (Guide 5) is the biggest cost. Destroy when not working: `cd terraform/5_
 
 **Lambda errors**: Check CloudWatch logs: `aws logs tail /aws/lambda/alex-<agent> --follow`. Verify env vars and IAM permissions.
 
+**After recreating Aurora** (common after cost-saving destroy): The secret ARN changes (random suffix). Full recovery sequence:
+1. `cd terraform/5_database && terraform apply`
+2. `uv run scripts/sync_arns.py` (updates .env and tfvars with new ARN)
+3. `cd terraform/6_agents && terraform apply` (redeploy agents with new ARN)
+4. `cd backend/database && uv run run_migrations.py`
+5. Test end-to-end
+
 ## CI/CD
 
 - **Mock Tests** (`.github/workflows/test.yml`): Runs on push/PR. Backend mocks + frontend Jest/Playwright. No AWS needed.
 - **Deployment Tests** (`.github/workflows/deployment-tests.yml`): Runs on PR to main/develop. Real AWS infrastructure. Requires GitHub secrets with current ARNs.
 - After infrastructure recreation, GitHub secrets must be updated with new ARNs.
 
-## Domain Context (from Cursor rules)
+## Agent Domain Context
 
-- **Tagger**: Classifies instruments by asset class, region, sector, market cap. Allocations must sum to 100%.
-- **Planner**: Orchestrates staged workflow — data gathering (Polygon prices, FMP fundamentals, FRED economic indicators), parallel agent dispatch, results aggregation.
-- **Reporter**: Portfolio analysis with FMP fundamentals, FRED economic context (rates, inflation, GDP, VIX), and market research from Researcher agent/S3 Vectors.
-- **Charter**: Generates visualizations and charts from analysis data.
-- **Retirement**: Monte Carlo simulations for retirement projections, dynamic withdrawal modeling, safe withdrawal rate calculation, portfolio survival probability.
+- **Tagger**: Classifies instruments by asset class, region, sector, market cap. Allocations must sum to 100%. Uses structured output (Pydantic models), not tool calling.
+- **Planner**: Orchestrates staged workflow — data gathering (Polygon prices, FMP fundamentals, FRED economic indicators), parallel agent dispatch, results aggregation. Uses tool calling to invoke other agents.
+- **Reporter**: Portfolio analysis with FMP fundamentals, FRED economic context (rates, inflation, GDP, VIX), and market research from Researcher agent/S3 Vectors. Includes quality guard (0.6 threshold), data sources tracking, SPY/AGG benchmark comparison, and dividend/income analysis.
+- **Charter**: Generates chart specifications as JSON. Includes JSON validation with 1 retry on parse failure. Outputs include benchmark and dividend charts.
+- **Retirement**: Monte Carlo simulations (1000 runs) with 3 scenarios (conservative/base/optimistic), dynamic withdrawal modeling, safe withdrawal rate calculation, what-if recommendations.
+- **Researcher**: Runs on App Runner (not Lambda). Provides investment research context to Reporter via API calls and S3 Vectors.
