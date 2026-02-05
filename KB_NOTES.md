@@ -1,74 +1,80 @@
 # KB Notes
 
-## Feb 5, 2026 — pandas-ta Technical Indicators Implementation
+## Feb 5, 2026 — 8-Step Robustness & Informativeness Roadmap COMPLETE
 
-Implemented the "future enhancement" from Feb 4 notes — technical indicators computed from Polygon historical price data using pandas-ta.
+Completed all 8 steps of the Alex enhancement plan. All 5 Lambda agents deployed successfully.
 
-### What was done (ALL CODE COMPLETE)
-- Created `backend/market_data/src/market_data/technical.py` — fetches 300-day OHLCV from Polygon, computes RSI(14), MACD(12,26,9), Bollinger Bands(20,2), SMA(50), SMA(200), EMA(20)
-- Created `backend/database/src/technical_models.py` — TechnicalIndicators model with JSONB storage, 1-hour staleness cache
-- Created `backend/database/migrations/005_technical_indicators.sql` — new table
-- Updated `run_migrations.py` with migration 005 (statements 22-23)
-- Added `pandas>=2.0` and `pandas-ta>=0.3.14b` to market_data pyproject.toml
-- Wired exports through `__init__.py` files (market_data + database)
-- Added `compute_technical_indicators()` to `planner/market.py`, called in `planner/lambda_handler.py` after FRED fetch
-- Reporter: added `technical_indicators` to context, `format_technical_indicators()` formatter, "Technical Analysis" section in report prompt
-- Charter: `analyze_portfolio()` includes technical data, templates suggest RSI gauge + price vs moving averages charts
+### Steps completed (all committed and pushed)
+1. **Charter JSON Validation & Retry** — schema validation + 1 retry on parse failure
+2. **Reporter Quality Guard** — raised threshold from 0.3 to 0.6, retry on failure
+3. **Data Availability Transparency** — data_sources dict tracks API success/failure, footer in reports
+4. **API Rate Limiting** — slowapi middleware (5/min analyze, 30/min POST, 60/min GET)
+5. **Benchmark Comparison** — SPY/AGG always included in technical analysis
+6. **Dividend & Income Analysis** — estimated annual income, yield-weighted portfolio yield
+7. **Richer Retirement Scenarios** — 3 scenarios (conservative/base/optimistic), what-if recommendations, 1000 sims
+8. **Historical Performance Tracking** — analysis_history table, snapshot after each analysis, trend comparison
+
+### Lambda packaging breakthrough
+All 5 agents now package to ~82MB zipped (under 250MB unzipped limit):
+- Added EXCLUDE_PREFIXES for 30+ unused packages (AI provider SDKs, numba, llvmlite, numpy, pandas, etc.)
+- Added S3 upload fallback for packages >50MB
+- Docker cleanup removes __pycache__, tests, .dist-info, .pyc
+- Key finding: `numba` (LLVM JIT) + `llvmlite` were ~50MB — pandas-ta deps, excluded
+
+### Known limitation: pandas-ta excluded from Lambda
+Excluding numpy/pandas/numba/llvmlite means `market_data.technical.compute_technical_indicators()` will fail at runtime in Lambda. The Polygon price fetch and other market_data functions still work. Technical indicators were added in the Feb 5 morning session but can't run in Lambda due to the 250MB size limit.
+
+**Fix options for the future:**
+- Lambda container images (10GB limit) — best long-term solution
+- Pre-compute indicators in a separate service (App Runner or ECS)
+- Lambda layer with pandas/numpy (still counts toward 250MB, won't help)
 
 ### TODO for next session (Feb 6)
-1. **Bring Aurora back up** — it's destroyed (cost savings):
+1. **Bring Aurora back up** (destroyed for cost savings):
    ```bash
    cd terraform/5_database && terraform apply
    ```
-2. **Run migration** — creates the `technical_indicators` table (statements 22-23):
+2. **Sync ARNs** (new secret ARN after terraform apply):
+   ```bash
+   uv run scripts/sync_arns.py
+   ```
+3. **Update 6_agents tfvars** with new secret ARN, then apply:
+   ```bash
+   cd terraform/6_agents && terraform apply
+   ```
+4. **Run migrations** (includes all 27 statements through migration 006):
    ```bash
    cd backend/database && uv run run_migrations.py
    ```
-3. **Repackage Planner Lambda** — Docker image needs pandas/pandas-ta:
-   ```bash
-   cd backend/planner && uv run package_docker.py
-   ```
-4. **Repackage Reporter + Charter Lambdas** — they have new code for loading/formatting technical data:
-   ```bash
-   cd backend/reporter && uv run package_docker.py
-   cd backend/charter && uv run package_docker.py
-   ```
-5. **Test end-to-end** — run a Planner job, verify:
-   - Technical indicators populate in `technical_indicators` table
-   - Reporter report includes "Technical Analysis" section
-   - Charter charts include RSI or moving average visualizations
-6. **Destroy Aurora when done** to save ~$43/mo:
+5. **Test end-to-end** — run a full analysis, verify:
+   - Reporter includes data sources footer, quality guard, benchmark comparison, income analysis
+   - Charter JSON validation works, charts include benchmark and dividend charts
+   - Retirement shows 3 scenarios with what-if recommendations
+   - Historical snapshot saved to analysis_history table
+6. **Destroy Aurora when done** to save ~$65/mo:
    ```bash
    cd terraform/5_database && terraform destroy
    ```
 
-### Files created (3)
-- `backend/market_data/src/market_data/technical.py`
-- `backend/database/src/technical_models.py`
-- `backend/database/migrations/005_technical_indicators.sql`
+### All agents deployed (as of Feb 5 evening)
+| Agent | Zip Size | Deploy Method |
+|-------|----------|---------------|
+| alex-planner | 83.0 MB | S3 upload |
+| alex-reporter | 81.8 MB | S3 upload |
+| alex-tagger | 81.8 MB | S3 upload |
+| alex-charter | 82.6 MB | S3 upload |
+| alex-retirement | 81.6 MB | S3 upload |
 
-### Files modified (12)
-- `backend/market_data/pyproject.toml` — added pandas, pandas-ta
-- `backend/market_data/src/market_data/__init__.py` — export get_technical_indicators
-- `backend/database/src/models.py` — import TechnicalIndicators, add db.technical_indicators
-- `backend/database/src/__init__.py` — export TechnicalIndicators
-- `backend/database/run_migrations.py` — migration 005 statements
-- `backend/planner/market.py` — compute_technical_indicators()
-- `backend/planner/lambda_handler.py` — calls compute_technical_indicators after FRED
-- `backend/reporter/agent.py` — context field, format_technical_indicators(), updated prompt
-- `backend/reporter/lambda_handler.py` — loads technical data from DB, passes to agent
-- `backend/charter/agent.py` — analyze_portfolio() + create_agent() accept technical_data
-- `backend/charter/lambda_handler.py` — loads technical data from DB, passes to agent
-- `backend/charter/templates.py` — RSI gauge + price vs MA chart types
-
-### Architecture
-```
-Planner -> Polygon.io (300-day OHLCV) -> pandas-ta -> Aurora JSONB (1hr cache)
-                                                           |
-                                               Reporter (text in LLM prompt)
-                                               Charter (in portfolio analysis text)
-```
-Only Planner gets pandas/pandas-ta dependency. Reporter/Charter just read JSONB from DB.
+### Commits pushed (9 total)
+1. `365bea4` Add pandas-ta technical indicators
+2. `f4ee7e1` Add API rate limiting with slowapi
+3. `45e186d` Add SPY/AGG benchmark comparison
+4. `0080315` Add dividend income analysis
+5. `4db31f0` Enhance retirement analysis with 3 scenarios
+6. `f0937c5` Add historical performance tracking
+7. `1ea0e55` Add charter JSON validation and retry
+8. `bab9b7e` Add reporter quality guard with retry
+9. `d91aae6` Fix Lambda packaging: exclude numba/llvmlite/numpy/pandas, add S3 deploy
 
 ---
 
