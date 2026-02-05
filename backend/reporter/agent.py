@@ -399,6 +399,71 @@ def format_technical_indicators(technical_data: Dict[str, Dict[str, Any]]) -> st
     return "\n".join(lines)
 
 
+def format_income_analysis(fundamentals: Dict[str, Dict[str, Any]], portfolio_data: Dict[str, Any]) -> str:
+    """Compute estimated annual dividend income from fundamentals and portfolio positions."""
+    if not fundamentals or not portfolio_data:
+        return ""
+
+    # Aggregate position values per symbol across all accounts
+    symbol_values: Dict[str, float] = {}
+    for account in portfolio_data.get("accounts", []):
+        for position in account.get("positions", []):
+            symbol = position.get("symbol")
+            if not symbol:
+                continue
+            instrument = position.get("instrument", {})
+            price = float(instrument.get("current_price", 0) or 0)
+            qty = float(position.get("quantity", 0))
+            value = price * qty
+            symbol_values[symbol] = symbol_values.get(symbol, 0) + value
+
+    if not symbol_values:
+        return ""
+
+    income_rows = []
+    total_income = 0.0
+    total_value = sum(symbol_values.values())
+
+    for symbol, value in sorted(symbol_values.items(), key=lambda x: -x[1]):
+        fund = fundamentals.get(symbol, {})
+        div_yield = fund.get("dividend_yield")
+        if div_yield is not None:
+            try:
+                dy = float(div_yield)
+            except (ValueError, TypeError):
+                dy = 0.0
+        else:
+            dy = 0.0
+        annual_income = value * dy
+        total_income += annual_income
+        income_rows.append((symbol, value, dy, annual_income))
+
+    if not income_rows:
+        return ""
+
+    weighted_yield = (total_income / total_value * 100) if total_value > 0 else 0.0
+
+    lines = ["Income Analysis (Estimated Annual Dividends):"]
+    lines.append(f"  Portfolio Yield (weighted): {weighted_yield:.2f}%")
+    lines.append(f"  Total Estimated Annual Income: ${total_income:,.2f}")
+    lines.append("")
+
+    # Top income generators
+    top_income = sorted(income_rows, key=lambda x: -x[3])[:3]
+    if top_income and top_income[0][3] > 0:
+        lines.append("  Top Income Generators:")
+        for symbol, value, dy, income in top_income:
+            if income > 0:
+                lines.append(f"    {symbol}: ${income:,.2f}/yr ({dy*100:.2f}% yield on ${value:,.0f})")
+
+    # Zero-yield holdings
+    zero_yield = [r[0] for r in income_rows if r[2] == 0 and r[1] > 0]
+    if zero_yield:
+        lines.append(f"  Non-dividend Holdings: {', '.join(zero_yield)}")
+
+    return "\n".join(lines)
+
+
 BENCHMARK_SYMBOLS = {"SPY": "S&P 500 ETF", "AGG": "US Aggregate Bond ETF"}
 
 
@@ -510,6 +575,9 @@ def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[st
     # Format benchmark comparison
     benchmark_section = format_benchmark_comparison(technical_data or {})
 
+    # Format income analysis
+    income_section = format_income_analysis(fundamentals or {}, portfolio_data)
+
     # Create task
     task = f"""Analyze this investment portfolio and write a comprehensive report.
 
@@ -521,6 +589,8 @@ Fundamental Data (from Financial Modeling Prep):
 {economic_section}
 
 {technical_section}
+
+{income_section}
 
 {benchmark_section}
 
@@ -540,6 +610,7 @@ The report should include:
 - Technical Analysis (RSI, MACD, moving averages, Bollinger Bands for each holding — note overbought/oversold conditions, trend direction, momentum signals)
 - Benchmark Comparison (compare portfolio momentum and trend signals against SPY and AGG — are holdings outperforming or underperforming the broad market?)
 - Risk Assessment (use beta, debt/equity data, VIX level, and technical signals)
+- Income Analysis (estimated annual dividend income, portfolio yield, top income generators, and non-dividend holdings)
 - Diversification Analysis (use sector/industry data)
 - Retirement Readiness (based on user goals)
 - Recommendations (informed by valuations, yield, growth metrics, macro environment, and technical signals)

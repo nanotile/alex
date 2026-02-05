@@ -53,6 +53,7 @@ CHART IDEAS TO IMPLEMENT:
 - RSI gauge (if technical indicators provided): bar chart showing RSI values per symbol with overbought (70) and oversold (30) reference zones — use red for overbought, green for oversold, blue for neutral
 - Price vs moving averages (if technical indicators provided): grouped bar chart showing current price, SMA(50), and SMA(200) per symbol
 - Portfolio vs Benchmark RSI (if technical indicators provided and SPY/AGG data available): grouped bar chart comparing RSI values of top holdings against SPY and AGG benchmarks — helps users see if holdings are more or less overbought/oversold than the market
+- Dividend yield by holding (if fundamental/income data provided): horizontal bar chart showing dividend yield percentage per holding — color by yield level (green for >3%, blue for 1-3%, gray for 0%)
 
 EXAMPLE OUTPUT (this is what you should generate):
 {
