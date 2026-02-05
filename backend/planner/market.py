@@ -15,14 +15,12 @@ from market_data.technical import get_technical_indicators
 logger = logging.getLogger()
 
 
-def update_instrument_prices(job_id: str, db) -> None:
+def update_instrument_prices(job_id: str, db) -> bool:
     """
     Fetch current prices for all instruments in the user's portfolio using polygon.io.
     Updates the instruments table with current prices.
 
-    Args:
-        job_id: The job ID to identify the user's portfolio
-        db: Database instance
+    Returns True if at least one price was successfully fetched.
     """
     try:
         logger.info(f"Market: Fetching current prices for job {job_id}")
@@ -31,7 +29,7 @@ def update_instrument_prices(job_id: str, db) -> None:
         job = db.jobs.find_by_id(job_id)
         if not job:
             logger.error(f"Market: Job {job_id} not found")
-            return
+            return False
 
         user_id = job['clerk_user_id']
 
@@ -46,31 +44,30 @@ def update_instrument_prices(job_id: str, db) -> None:
 
         if not symbols:
             logger.info("Market: No symbols to update prices for")
-            return
+            return False
 
         logger.info(f"Market: Fetching prices for {len(symbols)} symbols: {symbols}")
 
         # Update prices for each symbol
-        update_prices_for_symbols(symbols, db)
+        updated_count = update_prices_for_symbols(symbols, db)
 
         logger.info("Market: Price update complete")
+        return updated_count > 0
 
     except Exception as e:
         logger.error(f"Market: Error updating instrument prices: {e}")
-        # Non-critical error, continue with analysis
+        return False
 
 
-def update_prices_for_symbols(symbols: Set[str], db) -> None:
+def update_prices_for_symbols(symbols: Set[str], db) -> int:
     """
     Fetch and update prices for a set of symbols using polygon.io.
 
-    Args:
-        symbols: Set of ticker symbols to update
-        db: Database instance
+    Returns the number of symbols successfully updated.
     """
     if not symbols:
         logger.info("Market: No symbols to update")
-        return
+        return 0
 
     symbols_list = list(symbols)
     price_map = {}
@@ -115,6 +112,8 @@ def update_prices_for_symbols(symbols: Set[str], db) -> None:
     if missing:
         logger.warning(f"Market: No prices found for: {missing}")
 
+    return len(price_map)
+
 
 def get_all_portfolio_symbols(db) -> Set[str]:
     """
@@ -145,12 +144,12 @@ def get_all_portfolio_symbols(db) -> Set[str]:
     return symbols
 
 
-def update_instrument_fundamentals(job_id: str, db) -> Dict[str, Any]:
+def update_instrument_fundamentals(job_id: str, db) -> tuple[Dict[str, Any], bool]:
     """
     Fetch FMP fundamentals for portfolio symbols and store in Aurora.
     Only re-fetches if data is older than 24 hours.
 
-    Returns a dict of {symbol: fundamentals_dict} for passing to other agents.
+    Returns (dict of {symbol: fundamentals_dict}, success_bool).
     """
     fundamentals_map = {}
 
@@ -158,7 +157,7 @@ def update_instrument_fundamentals(job_id: str, db) -> Dict[str, Any]:
         fmp_api_key = os.getenv("FMP_API_KEY", "")
         if not fmp_api_key:
             logger.info("Market: FMP_API_KEY not set — skipping fundamentals fetch")
-            return fundamentals_map
+            return fundamentals_map, False
 
         fmp = FMPClient(api_key=fmp_api_key)
 
@@ -179,7 +178,7 @@ def update_instrument_fundamentals(job_id: str, db) -> Dict[str, Any]:
 
         if not symbols:
             logger.info("Market: No symbols for fundamentals update")
-            return fundamentals_map
+            return fundamentals_map, False
 
         symbols_list = list(symbols)
         logger.info(f"Market: Checking fundamentals for {len(symbols_list)} symbols")
@@ -212,16 +211,16 @@ def update_instrument_fundamentals(job_id: str, db) -> Dict[str, Any]:
         logger.error(f"Market: Error updating fundamentals: {e}")
         # Non-critical — continue without fundamentals
 
-    return fundamentals_map
+    return fundamentals_map, bool(fundamentals_map)
 
 
-def update_economic_indicators(db) -> Dict[str, Any]:
+def update_economic_indicators(db) -> tuple[Dict[str, Any], bool]:
     """
     Fetch FRED macro-economic data and cache in Aurora.
     No job_id needed — economic data is shared across all portfolios.
     Only re-fetches if data is older than 6 hours.
 
-    Returns a dict of {series_id: indicator_dict} for passing to other agents.
+    Returns (dict of {series_id: indicator_dict}, success_bool).
     """
     indicators_map = {}
 
@@ -229,7 +228,7 @@ def update_economic_indicators(db) -> Dict[str, Any]:
         fred_api_key = os.getenv("FRED_API_KEY", "")
         if not fred_api_key:
             logger.info("Market: FRED_API_KEY not set — skipping economic indicators")
-            return indicators_map
+            return indicators_map, False
 
         fred = FREDClient(api_key=fred_api_key)
 
@@ -272,16 +271,16 @@ def update_economic_indicators(db) -> Dict[str, Any]:
         logger.error(f"Market: Error updating economic indicators: {e}")
         # Non-critical — continue without economic data
 
-    return indicators_map
+    return indicators_map, bool(indicators_map)
 
 
-def compute_technical_indicators(job_id: str, db) -> Dict[str, Any]:
+def compute_technical_indicators(job_id: str, db) -> tuple[Dict[str, Any], bool]:
     """
     Compute technical indicators (RSI, MACD, Bollinger Bands, SMA/EMA) for portfolio symbols
     using Polygon.io historical data and pandas-ta.
     Caches results in Aurora with a 1-hour staleness window.
 
-    Returns a dict of {symbol: indicators_dict} for passing to other agents.
+    Returns (dict of {symbol: indicators_dict}, success_bool).
     """
     technical_map = {}
 
@@ -289,7 +288,7 @@ def compute_technical_indicators(job_id: str, db) -> Dict[str, Any]:
         polygon_api_key = os.getenv("POLYGON_API_KEY", "")
         if not polygon_api_key:
             logger.info("Market: POLYGON_API_KEY not set — skipping technical indicators")
-            return technical_map
+            return technical_map, False
 
         # Get the job to find the user's symbols
         job = db.jobs.find_by_id(job_id)
@@ -308,7 +307,7 @@ def compute_technical_indicators(job_id: str, db) -> Dict[str, Any]:
 
         if not symbols:
             logger.info("Market: No symbols for technical indicators")
-            return technical_map
+            return technical_map, False
 
         symbols_list = list(symbols)
         logger.info(f"Market: Checking technical indicators for {len(symbols_list)} symbols")
@@ -345,4 +344,4 @@ def compute_technical_indicators(job_id: str, db) -> Dict[str, Any]:
         logger.error(f"Market: Error computing technical indicators: {e}")
         # Non-critical — continue without technical data
 
-    return technical_map
+    return technical_map, bool(technical_map)

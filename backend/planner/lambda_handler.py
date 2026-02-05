@@ -49,19 +49,32 @@ async def run_orchestrator(job_id: str) -> None:
 
         # Update instrument prices after tagging
         logger.info("Planner: Updating instrument prices from market data")
-        await asyncio.to_thread(update_instrument_prices, job_id, db)
+        polygon_ok = await asyncio.to_thread(update_instrument_prices, job_id, db)
 
         # Fetch FMP fundamentals (stores in DB, returns dict for downstream agents)
         logger.info("Planner: Fetching FMP fundamentals for portfolio")
-        fundamentals_map = await asyncio.to_thread(update_instrument_fundamentals, job_id, db)
+        fundamentals_map, fmp_ok = await asyncio.to_thread(update_instrument_fundamentals, job_id, db)
 
         # Fetch FRED economic indicators (shared across all portfolios)
         logger.info("Planner: Fetching FRED economic indicators")
-        economic_data = await asyncio.to_thread(update_economic_indicators, db)
+        economic_data, fred_ok = await asyncio.to_thread(update_economic_indicators, db)
 
         # Compute technical indicators (Polygon history -> pandas-ta -> Aurora)
         logger.info("Planner: Computing technical indicators")
-        technical_data = await asyncio.to_thread(compute_technical_indicators, job_id, db)
+        technical_data, technical_ok = await asyncio.to_thread(compute_technical_indicators, job_id, db)
+
+        # Save data source availability for downstream agents (Reporter reads this)
+        data_sources = {
+            "polygon_prices": polygon_ok,
+            "fmp_fundamentals": fmp_ok,
+            "fred_economic": fred_ok,
+            "technical_indicators": technical_ok,
+        }
+        logger.info(f"Planner: Data sources: {data_sources}")
+        try:
+            db.jobs.update_summary(job_id, {"data_sources": data_sources})
+        except Exception as e:
+            logger.warning(f"Planner: Could not save data_sources to job: {e}")
 
         # Load portfolio summary (just statistics, not full data)
         portfolio_summary = await asyncio.to_thread(load_portfolio_summary, job_id, db)

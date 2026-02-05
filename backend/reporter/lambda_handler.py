@@ -51,11 +51,12 @@ async def run_reporter_agent(
     fundamentals: Dict[str, Any] = None,
     economic_data: Dict[str, Any] = None,
     technical_data: Dict[str, Any] = None,
+    data_sources: Dict[str, bool] = None,
 ) -> Dict[str, Any]:
     """Run the reporter agent to generate analysis."""
 
     # Create agent with tools and context
-    model, tools, task, context = create_agent(job_id, portfolio_data, user_data, db, fundamentals, economic_data, technical_data)
+    model, tools, task, context = create_agent(job_id, portfolio_data, user_data, db, fundamentals, economic_data, technical_data, data_sources)
 
     # Run agent with context
     with trace("Reporter Agent"):
@@ -281,9 +282,26 @@ def lambda_handler(event, context):
             except Exception as e:
                 logger.warning(f"Reporter: Could not load technical indicators: {e}")
 
+            # Load data sources availability from job summary (saved by Planner)
+            data_sources = None
+            try:
+                job_record = db.jobs.find_by_id(job_id)
+                if job_record:
+                    summary = job_record.get("summary_payload")
+                    if isinstance(summary, str):
+                        summary = json.loads(summary)
+                    if isinstance(summary, dict):
+                        data_sources = summary.get("data_sources")
+                        # Also track S3 Vectors availability (determined after market insights tool runs)
+                        if data_sources is not None:
+                            data_sources["s3_vectors"] = True  # Will be attempted by agent
+                        logger.info(f"Reporter: Data sources from planner: {data_sources}")
+            except Exception as e:
+                logger.warning(f"Reporter: Could not load data_sources: {e}")
+
             # Run the agent
             result = asyncio.run(
-                run_reporter_agent(job_id, portfolio_data, user_data, db, observability, fundamentals, economic_data, technical_data)
+                run_reporter_agent(job_id, portfolio_data, user_data, db, observability, fundamentals, economic_data, technical_data, data_sources)
             )
 
             logger.info(f"Reporter completed for job {job_id}")

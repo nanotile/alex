@@ -399,10 +399,41 @@ def format_technical_indicators(technical_data: Dict[str, Dict[str, Any]]) -> st
     return "\n".join(lines)
 
 
+def format_data_sources_footer(data_sources: Dict[str, bool]) -> str:
+    """Format a footer indicating which data sources were available for the analysis."""
+    if not data_sources:
+        return ""
+
+    source_labels = {
+        "polygon_prices": "Polygon.io real-time prices",
+        "fmp_fundamentals": "FMP company fundamentals",
+        "fred_economic": "FRED economic indicators",
+        "technical_indicators": "Technical indicators (RSI, MACD, Bollinger Bands, SMA/EMA)",
+        "s3_vectors": "S3 Vectors market research insights",
+    }
+
+    available = []
+    unavailable = []
+    for key, label in source_labels.items():
+        if data_sources.get(key):
+            available.append(label)
+        else:
+            unavailable.append(label)
+
+    lines = ["\n---\nData Sources:"]
+    if available:
+        lines.append(f"  Available: {', '.join(available)}")
+    if unavailable:
+        lines.append(f"  Unavailable: {', '.join(unavailable)}")
+
+    return "\n".join(lines)
+
+
 def create_agent(job_id: str, portfolio_data: Dict[str, Any], user_data: Dict[str, Any],
                  db=None, fundamentals: Dict[str, Dict[str, Any]] = None,
                  economic_data: Dict[str, Dict[str, Any]] = None,
-                 technical_data: Dict[str, Dict[str, Any]] = None):
+                 technical_data: Dict[str, Dict[str, Any]] = None,
+                 data_sources: Dict[str, bool] = None):
     """Create the reporter agent with tools and context."""
 
     # Get model configuration
@@ -469,6 +500,8 @@ The report should include:
 - Market Context (from insights)
 
 Provide your complete analysis as the final output in clear markdown format.
-Make the report informative yet accessible to a retail investor."""
+Make the report informative yet accessible to a retail investor.
+{format_data_sources_footer(data_sources)}
+{('Include a "Data Sources" section at the end of the report listing which data sources were available and unavailable for this analysis.' if data_sources else '')}"""
 
     return model, tools, task, context
