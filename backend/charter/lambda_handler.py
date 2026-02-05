@@ -21,9 +21,37 @@ except ImportError:
 # Import database package
 from src import Database
 
-from templates import CHARTER_INSTRUCTIONS
+from templates import CHARTER_INSTRUCTIONS, CHARTER_RETRY_INSTRUCTIONS
 from agent import create_agent
 from observability import observe
+
+VALID_CHART_TYPES = {"pie", "bar", "donut", "horizontalBar"}
+
+
+def validate_charts(parsed_data: dict) -> tuple[list, str]:
+    """Validate parsed JSON has a valid charts array with required fields.
+
+    Returns (charts_list, error_message). error_message is empty on success.
+    """
+    if not isinstance(parsed_data, dict):
+        return [], "Parsed data is not a JSON object"
+
+    charts = parsed_data.get("charts")
+    if not isinstance(charts, list) or len(charts) == 0:
+        return [], "Missing or empty 'charts' array"
+
+    for i, chart in enumerate(charts):
+        if not isinstance(chart, dict):
+            return [], f"Chart {i} is not an object"
+        missing = [f for f in ("key", "title", "type", "data") if f not in chart]
+        if missing:
+            return [], f"Chart {i} missing fields: {missing}"
+        if chart["type"] not in VALID_CHART_TYPES:
+            return [], f"Chart {i} has invalid type '{chart['type']}'"
+        if not isinstance(chart["data"], list) or len(chart["data"]) == 0:
+            return [], f"Chart {i} has empty or invalid data array"
+
+    return charts, ""
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -39,90 +67,116 @@ async def run_charter_agent(job_id: str, portfolio_data: Dict[str, Any], db=None
 
     # Create agent without tools - will output JSON
     model, task = create_agent(job_id, portfolio_data, db, technical_data)
-    
-    # Run agent - no tools, no context
+
+    def _parse_charts_output(output: str) -> tuple[dict | None, str]:
+        """Extract and validate charts JSON from agent output.
+
+        Returns (charts_data_dict, error_reason). charts_data_dict is None on failure.
+        """
+        if not output:
+            return None, "Agent returned empty output"
+
+        start_idx = output.find('{')
+        end_idx = output.rfind('}')
+
+        if start_idx < 0 or end_idx <= start_idx:
+            return None, f"No JSON structure found in output: {output[:300]}"
+
+        json_str = output[start_idx:end_idx + 1]
+        logger.info(f"Charter: Extracted JSON substring, length: {len(json_str)}")
+
+        try:
+            parsed_data = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            return None, f"JSON parse error: {e} — raw: {json_str[:300]}"
+
+        charts, validation_error = validate_charts(parsed_data)
+        if validation_error:
+            return None, f"Schema validation failed: {validation_error}"
+
+        # Build the charts_payload with chart keys as top-level keys
+        charts_data = {}
+        for chart in charts:
+            chart_key = chart.get('key', f"chart_{len(charts_data) + 1}")
+            chart_copy = {k: v for k, v in chart.items() if k != 'key'}
+            charts_data[chart_key] = chart_copy
+
+        return charts_data, ""
+
+    # --- Attempt 1: normal run ---
     with trace("Charter Agent"):
         agent = Agent(
             name="Chart Maker",
             instructions=CHARTER_INSTRUCTIONS,
             model=model
         )
-        
+
         result = await Runner.run(
             agent,
             input=task,
-            max_turns=5  # Reduced since we expect one-shot JSON response
+            max_turns=5
         )
-        
-        # Extract and parse JSON from the output
+
         output = result.final_output
         logger.info(f"Charter: Agent completed, output length: {len(output) if output else 0}")
-        
-        # Log the actual output for debugging
         if output:
             logger.info(f"Charter: Output preview (first 1000 chars): {output[:1000]}")
         else:
             logger.warning("Charter: Agent returned empty output!")
-            # Check if there were any messages
-            if hasattr(result, 'messages') and result.messages:
-                logger.info(f"Charter: Number of messages: {len(result.messages)}")
-                for i, msg in enumerate(result.messages):
-                    logger.info(f"Charter: Message {i}: {str(msg)[:500]}")
-        
-        # Parse the JSON output
-        charts_data = None
-        charts_saved = False
-        
-        if output:
-            # Try to find JSON in the output
-            # Look for the opening and closing braces of the JSON object
-            start_idx = output.find('{')
-            end_idx = output.rfind('}')
-            
-            if start_idx >= 0 and end_idx > start_idx:
-                json_str = output[start_idx:end_idx + 1]
-                logger.info(f"Charter: Extracted JSON substring, length: {len(json_str)}")
-                
-                try:
-                    parsed_data = json.loads(json_str)
-                    charts = parsed_data.get('charts', [])
-                    logger.info(f"Charter: Successfully parsed JSON, found {len(charts)} charts")
-                    
-                    if charts:
-                        # Build the charts_payload with chart keys as top-level keys
-                        charts_data = {}
-                        for chart in charts:
-                            chart_key = chart.get('key', f"chart_{len(charts_data) + 1}")
-                            # Remove the 'key' from the chart data since it's now the dict key
-                            chart_copy = {k: v for k, v in chart.items() if k != 'key'}
-                            charts_data[chart_key] = chart_copy
-                        
-                        logger.info(f"Charter: Created charts_data with keys: {list(charts_data.keys())}")
-                        
-                        # Save to database
-                        if db and charts_data:
-                            try:
-                                success = db.jobs.update_charts(job_id, charts_data)
-                                charts_saved = bool(success)
-                                logger.info(f"Charter: Database update returned: {success}")
-                            except Exception as e:
-                                logger.error(f"Charter: Database error: {e}")
-                    else:
-                        logger.warning("Charter: No charts found in parsed JSON")
-                        
-                except json.JSONDecodeError as e:
-                    logger.error(f"Charter: Failed to parse JSON: {e}")
-                    logger.error(f"Charter: JSON string attempted: {json_str[:500]}...")
-            else:
-                logger.error(f"Charter: No JSON structure found in output")
-                logger.error(f"Charter: Output preview: {output[:500]}...")
-        
-        return {
-            'success': charts_saved,
-            'message': f'Generated {len(charts_data) if charts_data else 0} charts' if charts_saved else 'Failed to generate charts',
-            'charts_generated': len(charts_data) if charts_data else 0,
-            'chart_keys': list(charts_data.keys()) if charts_data else []
-        }
+
+        charts_data, error_reason = _parse_charts_output(output)
+
+    # --- Attempt 2: retry with stricter prompt if first attempt failed ---
+    if charts_data is None:
+        logger.warning(f"Charter: First attempt failed — {error_reason}. Retrying with stricter prompt.")
+
+        with trace("Charter Agent Retry"):
+            retry_agent = Agent(
+                name="Chart Maker Retry",
+                instructions=CHARTER_RETRY_INSTRUCTIONS,
+                model=model
+            )
+
+            retry_input = f"{task}\n\nPREVIOUS FAILED OUTPUT (do not repeat this mistake):\n{(output or '')[:500]}"
+            retry_result = await Runner.run(
+                retry_agent,
+                input=retry_input,
+                max_turns=5
+            )
+
+            retry_output = retry_result.final_output
+            logger.info(f"Charter: Retry output length: {len(retry_output) if retry_output else 0}")
+            if retry_output:
+                logger.info(f"Charter: Retry preview: {retry_output[:1000]}")
+
+            charts_data, retry_error = _parse_charts_output(retry_output)
+            if charts_data is None:
+                logger.error(f"Charter: Retry also failed — {retry_error}")
+
+    # --- Save to database ---
+    charts_saved = False
+    if db and charts_data:
+        try:
+            success = db.jobs.update_charts(job_id, charts_data)
+            charts_saved = bool(success)
+            logger.info(f"Charter: Database update returned: {success}, keys: {list(charts_data.keys())}")
+        except Exception as e:
+            logger.error(f"Charter: Database error: {e}")
+    elif db and charts_data is None:
+        # Save diagnostic error so frontend can show a message
+        diagnostic = {"_error": {"message": "Chart generation failed after retry", "reason": error_reason}}
+        try:
+            db.jobs.update_charts(job_id, diagnostic)
+            logger.info("Charter: Saved diagnostic error to charts_payload")
+        except Exception as e:
+            logger.error(f"Charter: Failed to save diagnostic: {e}")
+
+    return {
+        'success': charts_saved,
+        'message': f'Generated {len(charts_data)} charts' if charts_saved else 'Failed to generate charts',
+        'charts_generated': len(charts_data) if charts_data else 0,
+        'chart_keys': list(charts_data.keys()) if charts_data else []
+    }
 
 def lambda_handler(event, context):
     """

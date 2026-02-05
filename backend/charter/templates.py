@@ -10,6 +10,13 @@ Your task is to analyze the portfolio and output a JSON object containing 4-6 ch
 
 You must output ONLY valid JSON in the exact format shown below. Do not include any text before or after the JSON.
 
+CRITICAL — DO NOT do any of these:
+- Do NOT wrap output in ```json ... ``` markdown fences
+- Do NOT add any explanation text before or after the JSON
+- Do NOT say "Here is the JSON:" or "I've created charts for..."
+- Do NOT include comments inside the JSON
+- Your entire response must start with { and end with }
+
 REQUIRED JSON FORMAT:
 {
   "charts": [
@@ -113,7 +120,18 @@ EXAMPLE OUTPUT (this is what you should generate):
   ]
 }
 
-Remember: Output ONLY the JSON object. No explanations, no text before or after."""
+Remember: Output ONLY the JSON object. No explanations, no text before or after. Your response must begin with { and end with }."""
+
+
+CHARTER_RETRY_INSTRUCTIONS = """Your previous output was not valid chart JSON. Output ONLY the JSON object.
+
+Rules:
+- Start your response with { and end with }
+- No markdown fences, no explanation text
+- Must contain a "charts" array
+- Each chart must have: key (string), title (string), type (pie|bar|donut|horizontalBar), description (string), data (array of {name, value, color})
+
+Output the corrected JSON now."""
 
 
 def create_charter_task(portfolio_analysis: str, portfolio_data: dict) -> str:
