@@ -14,7 +14,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from litellm.exceptions import RateLimitError
 from judge import evaluate
 
-GUARD_AGAINST_SCORE = 0.3  # Guard against score being too low
+GUARD_AGAINST_SCORE = 0.6  # Reject reports scoring below 60%
 
 try:
     from dotenv import load_dotenv
@@ -71,6 +71,7 @@ async def run_reporter_agent(
         )
 
         response = result.final_output
+        score = None
 
         if observability:
             with observability.start_as_current_span(name="judge") as span:
@@ -80,15 +81,45 @@ async def run_reporter_agent(
                 span.score(name="Judge", value=score, data_type="NUMERIC", comment=comment)
                 observation = f"Score: {score} - Feedback: {comment}"
                 observability.create_event(name="Judge Event", status_message=observation)
+                logger.info(f"Reporter: First attempt score: {score}")
+
                 if score < GUARD_AGAINST_SCORE:
-                    logger.error(f"Reporter score is too low: {score}")
-                    response = "I'm sorry, I'm not able to generate a report for you. Please try again later."
+                    logger.warning(f"Reporter: Score {score} below threshold {GUARD_AGAINST_SCORE}, retrying agent")
+
+                    # Retry: run the agent again
+                    retry_result = await Runner.run(
+                        agent,
+                        input=task,
+                        context=context,
+                        max_turns=10,
+                    )
+                    retry_response = retry_result.final_output
+
+                    retry_evaluation = await evaluate(REPORTER_INSTRUCTIONS, task, retry_response)
+                    retry_score = retry_evaluation.score / 100
+                    retry_comment = retry_evaluation.feedback
+                    logger.info(f"Reporter: Retry score: {retry_score} (first was {score})")
+
+                    span.score(name="Judge Retry", value=retry_score, data_type="NUMERIC", comment=retry_comment)
+                    observability.create_event(
+                        name="Judge Retry Event",
+                        status_message=f"Retry Score: {retry_score} - Feedback: {retry_comment}",
+                    )
+
+                    # Keep the better of the two attempts
+                    if retry_score >= score:
+                        response = retry_response
+                        score = retry_score
+                        logger.info(f"Reporter: Using retry response (score {retry_score})")
+                    else:
+                        logger.info(f"Reporter: Keeping first response (score {score} > retry {retry_score})")
 
         # Save the report to database
         report_payload = {
             "content": response,
             "generated_at": datetime.utcnow().isoformat(),
             "agent": "reporter",
+            "quality_score": score,
         }
 
         success = db.jobs.update_report(job_id, report_payload)
