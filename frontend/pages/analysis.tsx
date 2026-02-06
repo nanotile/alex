@@ -247,9 +247,26 @@ export default function Analysis() {
   const renderOverview = () => {
     const report = job?.report_payload?.content;
     if (!report) {
+      const hasError = job?.error_message;
       return (
-        <div className="text-center py-12 text-gray-500">
-          No portfolio report available.
+        <div className="text-center py-12">
+          {hasError ? (
+            <>
+              <p className="text-red-600 font-semibold mb-2">Report generation failed</p>
+              <p className="text-gray-500 text-sm">The Portfolio Analyst encountered an error during analysis. Try running a new analysis.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-700 font-semibold mb-2">No portfolio report available</p>
+              <p className="text-gray-500 text-sm">The Portfolio Analyst did not produce a report for this analysis.</p>
+            </>
+          )}
+          <button
+            onClick={() => router.push('/advisor-team')}
+            className="mt-4 px-5 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 text-sm font-semibold"
+          >
+            Run New Analysis
+          </button>
         </div>
       );
     }
@@ -272,7 +289,7 @@ export default function Analysis() {
               </div>
             ),
             thead: ({children}) => <thead className="bg-gray-100">{children}</thead>,
-            th: ({children}) => <th className="p-3 text-left font-semibold border border-gray-300">{children}</th>,
+            th: ({children}) => <th scope="col" className="p-3 text-left font-semibold border border-gray-300">{children}</th>,
             td: ({children}) => <td className="p-3 border border-gray-300">{children}</td>,
             strong: ({children}) => <strong className="font-semibold text-gray-900">{children}</strong>,
             blockquote: ({children}) => (
@@ -291,9 +308,26 @@ export default function Analysis() {
   const renderCharts = () => {
     const chartsPayload = job?.charts_payload;
     if (!chartsPayload || Object.keys(chartsPayload).length === 0) {
+      const hasError = job?.error_message;
       return (
-        <div className="text-center py-12 text-gray-500">
-          No chart data available.
+        <div className="text-center py-12">
+          {hasError ? (
+            <>
+              <p className="text-red-600 font-semibold mb-2">Chart generation failed</p>
+              <p className="text-gray-500 text-sm">The Chart Specialist encountered an error during analysis. Try running a new analysis.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-700 font-semibold mb-2">No charts were generated</p>
+              <p className="text-gray-500 text-sm">The Chart Specialist did not produce any visualizations for this analysis. This can happen if portfolio data was insufficient.</p>
+            </>
+          )}
+          <button
+            onClick={() => router.push('/advisor-team')}
+            className="mt-4 px-5 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 text-sm font-semibold"
+          >
+            Run New Analysis
+          </button>
         </div>
       );
     }
@@ -352,7 +386,7 @@ export default function Analysis() {
           return (
             <div key={key} className="bg-white rounded-lg p-6 border border-gray-200">
               <h3 className="text-xl font-semibold mb-4 text-gray-800">{title}</h3>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={300} aria-label={`Chart: ${title}`}>
                 {chartType === 'pie' || chartType === 'donut' ? (
                   <PieChart>
                     <Pie
@@ -444,9 +478,32 @@ export default function Analysis() {
   const renderRetirement = () => {
     const retirement = job?.retirement_payload;
     if (!retirement) {
+      const hasError = job?.error_message;
       return (
-        <div className="text-center py-12 text-gray-500">
-          No retirement projection available.
+        <div className="text-center py-12">
+          {hasError ? (
+            <>
+              <p className="text-red-600 font-semibold mb-2">Retirement projection failed</p>
+              <p className="text-gray-500 text-sm">The Retirement Planner encountered an error during analysis. Try running a new analysis.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-700 font-semibold mb-2">No retirement projection available</p>
+              <p className="text-gray-500 text-sm">The Retirement Planner did not produce a projection. This can happen if retirement settings (years until retirement, target income) are not configured.</p>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="mt-4 mr-2 px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-semibold"
+              >
+                Configure Settings
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => router.push('/advisor-team')}
+            className="mt-4 px-5 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 text-sm font-semibold"
+          >
+            Run New Analysis
+          </button>
         </div>
       );
     }
@@ -510,8 +567,11 @@ export default function Analysis() {
           {/* Tabs */}
           <div className="bg-white rounded-lg shadow mb-8">
             <div className="border-b border-gray-200">
-              <nav className="flex -mb-px">
+              <nav className="flex -mb-px" role="tablist" aria-label="Analysis results">
                 <button
+                  role="tab"
+                  aria-selected={activeTab === 'overview'}
+                  aria-controls="tabpanel-overview"
                   onClick={() => setActiveTab('overview')}
                   className={`py-3 px-8 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === 'overview'
@@ -522,6 +582,9 @@ export default function Analysis() {
                   📊 Overview
                 </button>
                 <button
+                  role="tab"
+                  aria-selected={activeTab === 'charts'}
+                  aria-controls="tabpanel-charts"
                   onClick={() => setActiveTab('charts')}
                   className={`py-3 px-8 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === 'charts'
@@ -532,6 +595,9 @@ export default function Analysis() {
                   📈 Charts
                 </button>
                 <button
+                  role="tab"
+                  aria-selected={activeTab === 'retirement'}
+                  aria-controls="tabpanel-retirement"
                   onClick={() => setActiveTab('retirement')}
                   className={`py-3 px-8 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === 'retirement'
@@ -546,7 +612,12 @@ export default function Analysis() {
           </div>
 
           {/* Tab Content */}
-          <div className="bg-white rounded-lg shadow px-8 py-6">
+          <div
+            className="bg-white rounded-lg shadow px-8 py-6"
+            role="tabpanel"
+            id={`tabpanel-${activeTab}`}
+            aria-label={`${activeTab} tab content`}
+          >
             {activeTab === 'overview' && renderOverview()}
             {activeTab === 'charts' && renderCharts()}
             {activeTab === 'retirement' && renderRetirement()}

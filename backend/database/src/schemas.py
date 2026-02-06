@@ -205,6 +205,9 @@ class UserCreate(BaseModel):
 class AccountCreate(BaseModel):
     """Schema for creating an account - suitable for LLM tool input"""
 
+    clerk_user_id: str = Field(
+        description="Clerk user ID that owns this account", min_length=1, max_length=255
+    )
     account_name: str = Field(
         description="Name of the account (e.g., '401k', 'Roth IRA')", min_length=1, max_length=255
     )

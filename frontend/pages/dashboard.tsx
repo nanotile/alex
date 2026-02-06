@@ -1,5 +1,6 @@
 import { useUser, useAuth } from "@clerk/nextjs";
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/router";
 import { API_URL } from "../lib/config";
 import Layout from "../components/Layout";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
@@ -47,6 +48,7 @@ interface Instrument {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
   const { user, isLoaded: userLoaded } = useUser();
   const { getToken } = useAuth();
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -192,9 +194,27 @@ export default function Dashboard() {
           setInstruments(instrumentsMap);
         }
 
-        // Get last analysis date
-        // This would come from the jobs endpoint in a real implementation
-        setLastAnalysisDate(null);
+        // Get last analysis date from jobs endpoint
+        try {
+          const jobsResponse = await fetch(`${API_URL}/api/jobs`, {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+            },
+          });
+          if (jobsResponse.ok) {
+            const jobsData = await jobsResponse.json();
+            const completedJobs = (jobsData.jobs || [])
+              .filter((j: { status: string }) => j.status === 'completed')
+              .sort((a: { created_at: string }, b: { created_at: string }) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              );
+            if (completedJobs.length > 0) {
+              setLastAnalysisDate(completedJobs[0].created_at);
+            }
+          }
+        } catch (jobsErr) {
+          console.error("Error fetching jobs:", jobsErr);
+        }
 
       } catch (err) {
         console.error("Error loading data:", err);
@@ -413,7 +433,7 @@ export default function Dashboard() {
             <h3 className="text-sm font-medium text-gray-500 mb-2 text-center">Asset Allocation</h3>
             {pieChartData.length > 0 ? (
               <div className="h-24">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" aria-label="Asset allocation breakdown">
                   <PieChart>
                     <Pie
                       data={pieChartData}
@@ -439,9 +459,22 @@ export default function Dashboard() {
 
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <h3 className="text-sm font-medium text-gray-500 mb-3">Last Analysis</h3>
-            <p className="text-3xl font-bold text-dark">
-              {lastAnalysisDate ? new Date(lastAnalysisDate).toLocaleDateString() : "Never"}
-            </p>
+            {lastAnalysisDate ? (
+              <button
+                onClick={() => router.push('/analysis')}
+                className="text-3xl font-bold text-primary hover:text-blue-600 transition-colors"
+                title="View latest analysis"
+              >
+                {new Date(lastAnalysisDate).toLocaleDateString()}
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push('/advisor-team')}
+                className="px-4 py-2 bg-ai-accent text-white rounded-lg hover:bg-purple-700 font-semibold text-sm transition-colors"
+              >
+                Start First Analysis
+              </button>
+            )}
           </div>
         </div>
 
@@ -464,10 +497,11 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Basic Info */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="display-name" className="block text-sm font-medium text-gray-700 mb-2">
                 Display Name
               </label>
               <input
+                id="display-name"
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
@@ -476,10 +510,11 @@ export default function Dashboard() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="target-retirement-income" className="block text-sm font-medium text-gray-700 mb-2">
                 Target Retirement Income (Annual)
               </label>
               <input
+                id="target-retirement-income"
                 type="text"
                 value={targetRetirementIncome ? targetRetirementIncome.toLocaleString('en-US') : ''}
                 onChange={(e) => {
@@ -496,10 +531,11 @@ export default function Dashboard() {
 
             {/* Retirement Slider */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="years-retirement" className="block text-sm font-medium text-gray-700 mb-2">
                 Years Until Retirement: {yearsUntilRetirement}
               </label>
               <input
+                id="years-retirement"
                 type="range"
                 min="0"
                 max="50"
@@ -522,8 +558,9 @@ export default function Dashboard() {
               <h3 className="text-sm font-medium text-gray-700 mb-3">Target Asset Class Allocation</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm text-gray-600">Equity: {equityTarget}%</label>
+                  <label htmlFor="equity-target" className="text-sm text-gray-600">Equity: {equityTarget}%</label>
                   <input
+                    id="equity-target"
                     type="range"
                     min="0"
                     max="100"
@@ -537,8 +574,9 @@ export default function Dashboard() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-600">Fixed Income: {fixedIncomeTarget}%</label>
+                  <label htmlFor="fixed-income-target" className="text-sm text-gray-600">Fixed Income: {fixedIncomeTarget}%</label>
                   <input
+                    id="fixed-income-target"
                     type="range"
                     min="0"
                     max="100"
@@ -555,7 +593,7 @@ export default function Dashboard() {
 
               {/* Mini pie chart for asset allocation */}
               <div className="mt-4 h-32">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" aria-label="Target asset class allocation chart">
                   <PieChart>
                     <Pie
                       data={[
@@ -581,8 +619,9 @@ export default function Dashboard() {
               <h3 className="text-sm font-medium text-gray-700 mb-3">Target Regional Allocation</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm text-gray-600">North America: {northAmericaTarget}%</label>
+                  <label htmlFor="north-america-target" className="text-sm text-gray-600">North America: {northAmericaTarget}%</label>
                   <input
+                    id="north-america-target"
                     type="range"
                     min="0"
                     max="100"
@@ -596,8 +635,9 @@ export default function Dashboard() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-600">International: {internationalTarget}%</label>
+                  <label htmlFor="international-target" className="text-sm text-gray-600">International: {internationalTarget}%</label>
                   <input
+                    id="international-target"
                     type="range"
                     min="0"
                     max="100"
@@ -614,7 +654,7 @@ export default function Dashboard() {
 
               {/* Mini pie chart for regional allocation */}
               <div className="mt-4 h-32">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" aria-label="Target regional allocation chart">
                   <PieChart>
                     <Pie
                       data={[

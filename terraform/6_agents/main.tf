@@ -247,6 +247,8 @@ resource "aws_lambda_function" "planner" {
       SAGEMAKER_ENDPOINT = var.sagemaker_endpoint
       POLYGON_API_KEY    = var.polygon_api_key
       POLYGON_PLAN       = var.polygon_plan
+      FMP_API_KEY        = var.fmp_api_key
+      FRED_API_KEY       = var.fred_api_key
       # LangFuse observability (optional)
       LANGFUSE_PUBLIC_KEY = var.langfuse_public_key
       LANGFUSE_SECRET_KEY = var.langfuse_secret_key
@@ -335,6 +337,8 @@ resource "aws_lambda_function" "reporter" {
       BEDROCK_REGION     = var.bedrock_region
       DEFAULT_AWS_REGION = var.aws_region
       SAGEMAKER_ENDPOINT = var.sagemaker_endpoint
+      FMP_API_KEY        = var.fmp_api_key
+      FRED_API_KEY       = var.fred_api_key
       # LangFuse observability (optional)
       LANGFUSE_PUBLIC_KEY = var.langfuse_public_key
       LANGFUSE_SECRET_KEY = var.langfuse_secret_key

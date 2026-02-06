@@ -170,12 +170,13 @@ def load_portfolio_summary(job_id: str, db) -> Dict[str, Any]:
         total_value += total_cash
         
         # Return only summary statistics
+        # Use "or default" to handle None values from database
         return {
             "total_value": total_value,
             "num_accounts": len(accounts),
             "num_positions": total_positions,
-            "years_until_retirement": user.get("years_until_retirement", 30),
-            "target_retirement_income": float(user.get("target_retirement_income", 80000))
+            "years_until_retirement": user.get("years_until_retirement") or 30,
+            "target_retirement_income": float(user.get("target_retirement_income") or 80000)
         }
 
     except Exception as e:

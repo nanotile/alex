@@ -12,7 +12,9 @@ from .polygon_prices import (
 )
 from .prices import get_price
 from .sentiment import SentimentClient
-from .technical import get_technical_indicators
+
+# technical module requires pandas - import separately when needed:
+# from market_data.technical import get_technical_indicators
 
 __all__ = [
     "FMPClient",
@@ -21,6 +23,5 @@ __all__ = [
     "get_share_price",
     "get_share_price_polygon",
     "get_price",
-    "get_technical_indicators",
     "is_market_open",
 ]

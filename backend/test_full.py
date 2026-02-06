@@ -16,7 +16,20 @@ from src.schemas import UserCreate, InstrumentCreate, AccountCreate, PositionCre
 def setup_test_data(db):
     """Ensure test user and portfolio exist"""
     print("Setting up test data...")
-    
+
+    # Create instruments first (required for positions FK)
+    instruments = [
+        {'symbol': 'SPY', 'name': 'SPDR S&P 500 ETF Trust', 'instrument_type': 'ETF'},
+        {'symbol': 'QQQ', 'name': 'Invesco QQQ Trust', 'instrument_type': 'ETF'},
+        {'symbol': 'BND', 'name': 'Vanguard Total Bond Market ETF', 'instrument_type': 'ETF'},
+        {'symbol': 'VTI', 'name': 'Vanguard Total Stock Market ETF', 'instrument_type': 'ETF'},
+    ]
+    for inst in instruments:
+        existing = db.instruments.find_by_symbol(inst['symbol'])
+        if not existing:
+            db.instruments.create(inst, returning='symbol')
+    print(f"  ✓ Ensured {len(instruments)} instruments exist")
+
     # Check/create test user
     test_user_id = 'test_user_001'
     user = db.users.find_by_clerk_id(test_user_id)
@@ -27,7 +40,7 @@ def setup_test_data(db):
             years_to_retirement=25,
             target_allocation={'stocks': 70, 'bonds': 20, 'alternatives': 10}
         )
-        db.users.create(user_data.model_dump())
+        db.users.create(user_data.model_dump(), returning='clerk_user_id')
         print(f"  ✓ Created test user: {test_user_id}")
     else:
         print(f"  ✓ Test user exists: {test_user_id}")
@@ -38,7 +51,7 @@ def setup_test_data(db):
         account_data = AccountCreate(
             clerk_user_id=test_user_id,
             account_name="Test 401(k)",
-            account_type="401k",
+            account_purpose="Retirement savings",
             cash_balance=5000.00
         )
         account_id = db.accounts.create(account_data.model_dump())

@@ -10,7 +10,14 @@ from typing import Set, Dict, List, Any
 from prices import get_share_price
 from market_data.fmp import FMPClient
 from market_data.fred import FREDClient, FRED_SERIES
-from market_data.technical import get_technical_indicators
+
+# Technical indicators require pandas - make optional for Lambda (pandas excluded due to size)
+try:
+    from market_data.technical import get_technical_indicators
+    TECHNICAL_AVAILABLE = True
+except ImportError:
+    TECHNICAL_AVAILABLE = False
+    get_technical_indicators = None
 
 logger = logging.getLogger()
 
@@ -283,6 +290,11 @@ def compute_technical_indicators(job_id: str, db) -> tuple[Dict[str, Any], bool]
     Returns (dict of {symbol: indicators_dict}, success_bool).
     """
     technical_map = {}
+
+    # Check if technical indicators module is available (requires pandas)
+    if not TECHNICAL_AVAILABLE:
+        logger.info("Market: Technical indicators not available (pandas not installed) — skipping")
+        return technical_map, False
 
     try:
         polygon_api_key = os.getenv("POLYGON_API_KEY", "")

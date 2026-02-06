@@ -6,11 +6,24 @@ Provides a simple interface for database operations
 import boto3
 import json
 import os
+import re
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import date, datetime
 from decimal import Decimal
+from uuid import UUID
 from botocore.exceptions import ClientError
 import logging
+
+# UUID regex pattern
+UUID_PATTERN = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
+
+def is_uuid_value(value: Any) -> bool:
+    """Check if a value is a UUID or UUID string"""
+    if isinstance(value, UUID):
+        return True
+    if isinstance(value, str) and UUID_PATTERN.match(value):
+        return True
+    return False
 
 # Try to load .env file if it exists
 try:
@@ -154,6 +167,8 @@ class DataAPIClient:
                 placeholders.append(f":{col}::date")
             elif isinstance(data[col], datetime):
                 placeholders.append(f":{col}::timestamp")
+            elif is_uuid_value(data[col]):
+                placeholders.append(f":{col}::uuid")
             else:
                 placeholders.append(f":{col}")
 
@@ -198,6 +213,8 @@ class DataAPIClient:
                 set_parts.append(f"{col} = :{col}::date")
             elif isinstance(val, datetime):
                 set_parts.append(f"{col} = :{col}::timestamp")
+            elif is_uuid_value(val):
+                set_parts.append(f"{col} = :{col}::uuid")
             else:
                 set_parts.append(f"{col} = :{col}")
 

@@ -1,0 +1,26 @@
+# Example terraform.tfvars for CloudWatch monitoring
+# Copy to terraform.tfvars and customize
+
+aws_region   = "us-east-1"
+project_name = "alex"
+
+# Error rate threshold (percentage)
+lambda_error_rate_threshold = 5
+
+# SQS message age threshold (seconds) - 10 minutes default
+sqs_queue_age_threshold = 600
+
+# Lambda function names to monitor
+lambda_function_names = [
+  "alex-planner",
+  "alex-tagger",
+  "alex-reporter",
+  "alex-charter",
+  "alex-retirement"
+]
+
+# SQS queue name
+sqs_queue_name = "alex-analysis-jobs"
+
+# Optional: SNS topic ARN for alarm notifications
+# alarm_actions = ["arn:aws:sns:us-east-1:123456789012:alex-alerts"]

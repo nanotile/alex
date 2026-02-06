@@ -358,12 +358,12 @@ export default function Accounts() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Account Name</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700 hidden md:table-cell">Type</th>
-                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Positions</th>
-                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Cash</th>
-                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Total Value</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Actions</th>
+                      <th scope="col" className="text-left py-3 px-4 font-semibold text-gray-700">Account Name</th>
+                      <th scope="col" className="text-left py-3 px-4 font-semibold text-gray-700 hidden md:table-cell">Type</th>
+                      <th scope="col" className="text-right py-3 px-4 font-semibold text-gray-700">Positions</th>
+                      <th scope="col" className="text-right py-3 px-4 font-semibold text-gray-700">Cash</th>
+                      <th scope="col" className="text-right py-3 px-4 font-semibold text-gray-700">Total Value</th>
+                      <th scope="col" className="text-center py-3 px-4 font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -444,10 +444,11 @@ export default function Accounts() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="new-account-name" className="block text-sm font-medium text-gray-700 mb-1">
                     Account Name *
                   </label>
                   <input
+                    id="new-account-name"
                     type="text"
                     value={newAccount.name}
                     onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })}
@@ -457,10 +458,11 @@ export default function Accounts() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="new-account-purpose" className="block text-sm font-medium text-gray-700 mb-1">
                     Account Purpose
                   </label>
                   <input
+                    id="new-account-purpose"
                     type="text"
                     value={newAccount.purpose}
                     onChange={(e) => setNewAccount({ ...newAccount, purpose: e.target.value })}
@@ -470,12 +472,13 @@ export default function Accounts() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="new-account-cash" className="block text-sm font-medium text-gray-700 mb-1">
                     Initial Cash Balance
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                     <input
+                      id="new-account-cash"
                       type="text"
                       value={newAccount.cash_balance}
                       onChange={(e) => setNewAccount({ ...newAccount, cash_balance: formatCurrencyInput(e.target.value) })}

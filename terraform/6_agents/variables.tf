@@ -45,6 +45,20 @@ variable "polygon_plan" {
   default     = "free"
 }
 
+variable "fmp_api_key" {
+  description = "Financial Modeling Prep API key for fundamentals data"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "fred_api_key" {
+  description = "FRED API key for economic indicators"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 # LangFuse observability variables (optional)
 variable "langfuse_public_key" {
   description = "LangFuse public key for observability (optional)"

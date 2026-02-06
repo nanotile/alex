@@ -76,6 +76,8 @@ export default function AdvisorTeam() {
     activeAgents: []
   });
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
+  const [timeoutTimer, setTimeoutTimer] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchJobs();
@@ -107,6 +109,13 @@ export default function AdvisorTeam() {
               setPollInterval(null);
             }
 
+            // Clear timeout warning
+            if (timeoutTimer) {
+              clearTimeout(timeoutTimer);
+              setTimeoutTimer(null);
+            }
+            setShowTimeoutWarning(false);
+
             // Emit completion event so other components can refresh
             emitAnalysisCompleted(jobId);
 
@@ -128,6 +137,13 @@ export default function AdvisorTeam() {
               clearInterval(pollInterval);
               setPollInterval(null);
             }
+
+            // Clear timeout warning
+            if (timeoutTimer) {
+              clearTimeout(timeoutTimer);
+              setTimeoutTimer(null);
+            }
+            setShowTimeoutWarning(false);
 
             // Emit failure event
             emitAnalysisFailed(jobId, job.error);
@@ -153,9 +169,12 @@ export default function AdvisorTeam() {
         clearInterval(pollInterval);
         setPollInterval(null);
       }
+      if (timeoutTimer) {
+        clearTimeout(timeoutTimer);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentJobId, pollInterval, router]);
+  }, [currentJobId, pollInterval, router, timeoutTimer]);
 
   const fetchJobs = async () => {
     try {
@@ -177,6 +196,10 @@ export default function AdvisorTeam() {
 
   const startAnalysis = async () => {
     setIsAnalyzing(true);
+    setShowTimeoutWarning(false);
+    // Show warning after 2 minutes
+    const timer = setTimeout(() => setShowTimeoutWarning(true), 120000);
+    setTimeoutTimer(timer);
     setProgress({
       stage: 'starting',
       message: 'Initializing analysis...',
@@ -228,6 +251,12 @@ export default function AdvisorTeam() {
         activeAgents: [],
         error: error instanceof Error ? error.message : 'Unknown error'
       });
+      // Clear timeout warning
+      if (timeoutTimer) {
+        clearTimeout(timeoutTimer);
+        setTimeoutTimer(null);
+      }
+      setShowTimeoutWarning(false);
       setIsAnalyzing(false);
       setCurrentJobId(null);
     }
@@ -339,6 +368,13 @@ export default function AdvisorTeam() {
                 }`}>
                   {progress.message}
                 </p>
+
+                {showTimeoutWarning && progress.stage !== 'error' && progress.stage !== 'complete' && (
+                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-800 font-medium">Taking longer than expected...</p>
+                    <p className="text-xs text-amber-600 mt-1">Analysis typically completes within 2 minutes. The agents are still working. You can wait or try again later.</p>
+                  </div>
+                )}
 
                 {progress.stage === 'error' && progress.error && (
                   <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
