@@ -257,7 +257,7 @@ def lambda_handler(event, context):
                     logger.error(f"Charter: Error loading portfolio data: {e}")
                     return {
                         'statusCode': 500,
-                        'body': json.dumps({'error': f'Failed to load portfolio data: {str(e)}'})
+                        'body': json.dumps({'error': 'Failed to load portfolio data'})
                     }
 
             logger.info(f"Charter: Processing job {job_id}")
@@ -297,7 +297,7 @@ def lambda_handler(event, context):
                 'statusCode': 500,
                 'body': json.dumps({
                     'success': False,
-                    'error': str(e)
+                    'error': 'An internal error occurred'
                 })
             }
 

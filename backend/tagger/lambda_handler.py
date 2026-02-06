@@ -71,7 +71,7 @@ async def process_instruments(instruments: List[Dict[str, str]]) -> Dict[str, An
             logger.error(f"Error updating {classification.symbol}: {e}")
             errors.append({
                 'symbol': classification.symbol,
-                'error': str(e)
+                'error': 'Failed to update instrument'
             })
     
     # Prepare response (convert Pydantic models to dicts)
@@ -126,8 +126,8 @@ def lambda_handler(event, context):
             }
 
         except Exception as e:
-            logger.error(f"Lambda handler error: {e}")
+            logger.error(f"Lambda handler error: {e}", exc_info=True)
             return {
                 'statusCode': 500,
-                'body': json.dumps({'error': str(e)})
+                'body': json.dumps({'error': 'An internal error occurred'})
             }

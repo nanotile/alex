@@ -14,7 +14,7 @@ import uuid
 from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 import boto3
 from mangum import Mangum
 from dotenv import load_dotenv
@@ -125,16 +125,25 @@ class UserResponse(BaseModel):
 
 class UserUpdate(BaseModel):
     """Update user settings"""
-    display_name: Optional[str] = None
+    display_name: Optional[str] = Field(None, max_length=255)
     years_until_retirement: Optional[int] = None
     target_retirement_income: Optional[float] = None
     asset_class_targets: Optional[Dict[str, float]] = None
     region_targets: Optional[Dict[str, float]] = None
 
+    @field_validator("asset_class_targets", "region_targets")
+    @classmethod
+    def validate_targets_sum(cls, v):
+        if v is not None:
+            total = sum(v.values())
+            if abs(total - 100) > 3:
+                raise ValueError(f"Allocations must sum to 100, got {total}")
+        return v
+
 class AccountUpdate(BaseModel):
     """Update account"""
-    account_name: Optional[str] = None
-    account_purpose: Optional[str] = None
+    account_name: Optional[str] = Field(None, max_length=255)
+    account_purpose: Optional[str] = Field(None, max_length=1000)
     cash_balance: Optional[float] = None
 
 class PositionUpdate(BaseModel):
@@ -142,7 +151,7 @@ class PositionUpdate(BaseModel):
     quantity: Optional[float] = None
 
 class AnalyzeRequest(BaseModel):
-    analysis_type: str = Field(default="portfolio", description="Type of analysis to perform")
+    analysis_type: str = Field(default="portfolio", description="Type of analysis to perform", max_length=100)
     options: Dict[str, Any] = Field(default_factory=dict, description="Analysis options")
 
 class AnalyzeResponse(BaseModel):
@@ -156,17 +165,14 @@ class AnalyzeResponse(BaseModel):
 async def root(request: Request):
     """Root endpoint - API information"""
     return {
-        "name": "Alex Financial Advisor API",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "health": "/health"
+        "name": "Alex Financial Advisor API"
     }
 
 @app.get("/health")
 @limiter.limit("60/minute")
 async def health_check(request: Request):
     """Health check endpoint"""
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+    return {"status": "ok"}
 
 @app.get("/api/user", response_model=UserResponse)
 async def get_or_create_user(
@@ -236,8 +242,8 @@ async def update_user(user_update: UserUpdate, clerk_user_id: str = Depends(get_
         return updated_user
 
     except Exception as e:
-        logger.error(f"Error updating user: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error updating user: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update user settings")
 
 @app.get("/api/accounts")
 async def list_accounts(clerk_user_id: str = Depends(get_current_user_id)):
@@ -249,8 +255,8 @@ async def list_accounts(clerk_user_id: str = Depends(get_current_user_id)):
         return accounts
 
     except Exception as e:
-        logger.error(f"Error listing accounts: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error listing accounts: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.post("/api/accounts")
 @limiter.limit("30/minute")
@@ -276,8 +282,8 @@ async def create_account(request: Request, account: AccountCreate = None, clerk_
         return created_account
 
     except Exception as e:
-        logger.error(f"Error creating account: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error creating account: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.put("/api/accounts/{account_id}")
 async def update_account(account_id: str, account_update: AccountUpdate, clerk_user_id: str = Depends(get_current_user_id)):
@@ -304,8 +310,8 @@ async def update_account(account_id: str, account_update: AccountUpdate, clerk_u
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating account: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error updating account: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.delete("/api/accounts/{account_id}")
 async def delete_account(account_id: str, clerk_user_id: str = Depends(get_current_user_id)):
@@ -334,8 +340,8 @@ async def delete_account(account_id: str, clerk_user_id: str = Depends(get_curre
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting account: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error deleting account: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.get("/api/accounts/{account_id}/positions")
 async def list_positions(account_id: str, clerk_user_id: str = Depends(get_current_user_id)):
@@ -368,8 +374,8 @@ async def list_positions(account_id: str, clerk_user_id: str = Depends(get_curre
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error listing positions: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error listing positions: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.post("/api/positions")
 @limiter.limit("30/minute")
@@ -429,8 +435,8 @@ async def create_position(request: Request, position: PositionCreate = None, cle
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error creating position: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error creating position: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.put("/api/positions/{position_id}")
 async def update_position(position_id: str, position_update: PositionUpdate, clerk_user_id: str = Depends(get_current_user_id)):
@@ -461,8 +467,8 @@ async def update_position(position_id: str, position_update: PositionUpdate, cle
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating position: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error updating position: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.delete("/api/positions/{position_id}")
 async def delete_position(position_id: str, clerk_user_id: str = Depends(get_current_user_id)):
@@ -488,8 +494,8 @@ async def delete_position(position_id: str, clerk_user_id: str = Depends(get_cur
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting position: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error deleting position: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.get("/api/instruments")
 async def list_instruments(clerk_user_id: str = Depends(get_current_user_id)):
@@ -508,8 +514,8 @@ async def list_instruments(clerk_user_id: str = Depends(get_current_user_id)):
             for inst in instruments
         ]
     except Exception as e:
-        logger.error(f"Error fetching instruments: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching instruments: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 @limiter.limit("5/minute")
@@ -556,8 +562,8 @@ async def trigger_analysis(request: Request, analyze_request: AnalyzeRequest = A
         )
 
     except Exception as e:
-        logger.error(f"Error triggering analysis: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error triggering analysis: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.get("/api/jobs/{job_id}")
 async def get_job_status(job_id: str, clerk_user_id: str = Depends(get_current_user_id)):
@@ -578,8 +584,8 @@ async def get_job_status(job_id: str, clerk_user_id: str = Depends(get_current_u
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting job status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error getting job status: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.get("/api/jobs")
 async def list_jobs(clerk_user_id: str = Depends(get_current_user_id)):
@@ -593,8 +599,8 @@ async def list_jobs(clerk_user_id: str = Depends(get_current_user_id)):
         return {"jobs": user_jobs}
 
     except Exception as e:
-        logger.error(f"Error listing jobs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error listing jobs: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.delete("/api/reset-accounts")
 async def reset_accounts(clerk_user_id: str = Depends(get_current_user_id)):
@@ -625,8 +631,8 @@ async def reset_accounts(clerk_user_id: str = Depends(get_current_user_id)):
         }
 
     except Exception as e:
-        logger.error(f"Error resetting accounts: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error resetting accounts: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 @app.post("/api/populate-test-data")
 @limiter.limit("5/minute")
@@ -784,8 +790,8 @@ async def populate_test_data(request: Request, clerk_user_id: str = Depends(get_
         }
 
     except Exception as e:
-        logger.error(f"Error populating test data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error populating test data: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred")
 
 # Lambda handler
 handler = Mangum(app)

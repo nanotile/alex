@@ -323,7 +323,7 @@ def lambda_handler(event, context):
 
         except Exception as e:
             logger.error(f"Error in reporter: {e}", exc_info=True)
-            return {"statusCode": 500, "body": json.dumps({"success": False, "error": str(e)})}
+            return {"statusCode": 500, "body": json.dumps({"success": False, "error": "An internal error occurred"})}
 
 
 # For local testing

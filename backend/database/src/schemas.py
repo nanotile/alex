@@ -192,6 +192,15 @@ class UserCreate(BaseModel):
         description="Target geographic allocation for rebalancing. Must sum to 100.",
     )
 
+    @field_validator("asset_class_targets", "region_targets")
+    @classmethod
+    def validate_targets_sum(cls, v):
+        if v is not None:
+            total = sum(v.values())
+            if abs(total - 100) > 3:
+                raise ValueError(f"Allocations must sum to 100, got {total}")
+        return v
+
 
 class AccountCreate(BaseModel):
     """Schema for creating an account - suitable for LLM tool input"""
@@ -199,7 +208,7 @@ class AccountCreate(BaseModel):
     account_name: str = Field(
         description="Name of the account (e.g., '401k', 'Roth IRA')", min_length=1, max_length=255
     )
-    account_purpose: Optional[str] = Field(None, description="Purpose or goal of this account")
+    account_purpose: Optional[str] = Field(None, description="Purpose or goal of this account", max_length=1000)
     cash_balance: Decimal = Field(
         default=Decimal("0"),
         description="Uninvested cash balance in the account",

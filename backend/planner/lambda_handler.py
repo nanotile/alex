@@ -47,21 +47,45 @@ async def run_orchestrator(job_id: str) -> None:
         # Handle missing instruments first (non-agent pre-processing)
         await asyncio.to_thread(handle_missing_instruments, job_id, db)
 
-        # Update instrument prices after tagging
+        # Update instrument prices after tagging (with timeout protection)
         logger.info("Planner: Updating instrument prices from market data")
-        polygon_ok = await asyncio.to_thread(update_instrument_prices, job_id, db)
+        try:
+            polygon_ok = await asyncio.wait_for(
+                asyncio.to_thread(update_instrument_prices, job_id, db), timeout=30
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Planner: Polygon price fetch timed out after 30s")
+            polygon_ok = False
 
         # Fetch FMP fundamentals (stores in DB, returns dict for downstream agents)
         logger.info("Planner: Fetching FMP fundamentals for portfolio")
-        fundamentals_map, fmp_ok = await asyncio.to_thread(update_instrument_fundamentals, job_id, db)
+        try:
+            fundamentals_map, fmp_ok = await asyncio.wait_for(
+                asyncio.to_thread(update_instrument_fundamentals, job_id, db), timeout=30
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Planner: FMP fundamentals fetch timed out after 30s")
+            fundamentals_map, fmp_ok = {}, False
 
         # Fetch FRED economic indicators (shared across all portfolios)
         logger.info("Planner: Fetching FRED economic indicators")
-        economic_data, fred_ok = await asyncio.to_thread(update_economic_indicators, db)
+        try:
+            economic_data, fred_ok = await asyncio.wait_for(
+                asyncio.to_thread(update_economic_indicators, db), timeout=30
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Planner: FRED economic indicators fetch timed out after 30s")
+            economic_data, fred_ok = {}, False
 
         # Compute technical indicators (Polygon history -> pandas-ta -> Aurora)
         logger.info("Planner: Computing technical indicators")
-        technical_data, technical_ok = await asyncio.to_thread(compute_technical_indicators, job_id, db)
+        try:
+            technical_data, technical_ok = await asyncio.wait_for(
+                asyncio.to_thread(compute_technical_indicators, job_id, db), timeout=30
+            )
+        except asyncio.TimeoutError:
+            logger.warning("Planner: Technical indicators computation timed out after 30s")
+            technical_data, technical_ok = {}, False
 
         # Save data source availability for downstream agents (Reporter reads this)
         data_sources = {
@@ -148,7 +172,7 @@ async def run_orchestrator(job_id: str) -> None:
 
     except Exception as e:
         logger.error(f"Planner: Error in orchestration: {e}", exc_info=True)
-        db.jobs.update_status(job_id, 'failed', error_message=str(e))
+        db.jobs.update_status(job_id, 'failed', error_message="Portfolio analysis failed")
         raise
 
 def lambda_handler(event, context):
@@ -209,7 +233,7 @@ def lambda_handler(event, context):
                 'statusCode': 500,
                 'body': json.dumps({
                     'success': False,
-                    'error': str(e)
+                    'error': 'An internal error occurred'
                 })
             }
 
