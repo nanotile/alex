@@ -130,10 +130,11 @@ class TestAgentCreation:
         mock_model = Mock()
         mock_model_class.return_value = mock_model
 
-        model, tools, task = create_agent(
+        user_data = create_test_user()
+        model, tools, task, context = create_agent(
             job_id="test_job",
             portfolio_data=sample_portfolio,
-            user_preferences={},
+            user_data=user_data,
             db=mock_db
         )
 
@@ -141,6 +142,7 @@ class TestAgentCreation:
         assert isinstance(tools, list)
         assert isinstance(task, str)
         assert len(task) > 0
+        assert context is not None
 
     @patch('agent.LitellmModel')
     def test_create_agent_task_includes_portfolio(self, mock_model_class, mock_db, sample_portfolio):
@@ -148,10 +150,11 @@ class TestAgentCreation:
         mock_model = Mock()
         mock_model_class.return_value = mock_model
 
-        _, _, task = create_agent(
+        user_data = create_test_user()
+        _, _, task, _ = create_agent(
             job_id="test_job",
             portfolio_data=sample_portfolio,
-            user_preferences={},
+            user_data=user_data,
             db=mock_db
         )
 
@@ -159,18 +162,22 @@ class TestAgentCreation:
         assert "VTI" in task or "portfolio" in task.lower()
 
     @patch('agent.LitellmModel')
-    def test_create_agent_with_preferences(self, mock_model_class, mock_db, sample_portfolio):
-        """Test agent creation with user preferences"""
+    def test_create_agent_with_fundamentals(self, mock_model_class, mock_db, sample_portfolio):
+        """Test agent creation with fundamentals and economic data"""
         mock_model = Mock()
         mock_model_class.return_value = mock_model
 
-        user_prefs = {"risk_tolerance": "aggressive", "retirement_age": 60}
+        user_data = create_test_user()
+        fundamentals = {"VTI": {"company_name": "Vanguard Total Stock", "pe_ratio": 22.5}}
+        economic_data = {"FEDFUNDS": {"latest_value": 5.25, "series_name": "Fed Funds Rate"}}
 
-        _, _, task = create_agent(
+        _, _, task, _ = create_agent(
             job_id="test_job",
             portfolio_data=sample_portfolio,
-            user_preferences=user_prefs,
-            db=mock_db
+            user_data=user_data,
+            db=mock_db,
+            fundamentals=fundamentals,
+            economic_data=economic_data,
         )
 
         assert isinstance(task, str)
@@ -209,7 +216,7 @@ class TestAgentTools:
     """Test Reporter agent tool functions"""
 
     @pytest.mark.asyncio
-    @patch('agent.get_market_insights')
+    @patch('agent.get_market_insights', new_callable=AsyncMock)
     async def test_market_insights_tool_called(self, mock_insights, reporter_context):
         """Test that market insights tool can be called"""
         mock_insights.return_value = "Market analysis for VTI, BND"

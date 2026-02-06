@@ -3,6 +3,7 @@ Tests for Pydantic schemas and validation
 """
 
 import pytest
+from decimal import Decimal
 from pydantic import ValidationError
 from src.schemas import (
     UserCreate,
@@ -21,34 +22,31 @@ class TestUserCreate:
         """Test creating valid user schema"""
         user = UserCreate(
             clerk_user_id="clerk_123",
-            email="test@example.com",
             display_name="Test User"
         )
 
         assert user.clerk_user_id == "clerk_123"
-        assert user.email == "test@example.com"
         assert user.display_name == "Test User"
 
-    def test_user_create_with_preferences(self):
-        """Test user creation with preferences"""
+    def test_user_create_with_retirement_fields(self):
+        """Test user creation with retirement planning fields"""
         user = UserCreate(
             clerk_user_id="clerk_123",
-            email="test@example.com",
             display_name="Test User",
-            preferences={"risk_tolerance": "moderate"}
+            years_until_retirement=20,
+            target_retirement_income=Decimal("80000.00"),
+            asset_class_targets={"equity": 70, "fixed_income": 30},
+            region_targets={"north_america": 60, "international": 40},
         )
 
-        assert user.preferences is not None
-        assert user.preferences["risk_tolerance"] == "moderate"
+        assert user.years_until_retirement == 20
+        assert user.target_retirement_income == Decimal("80000.00")
+        assert user.asset_class_targets["equity"] == 70
 
-    def test_user_create_validates_email(self):
-        """Test that invalid email is rejected"""
+    def test_user_create_requires_clerk_id(self):
+        """Test that clerk_user_id is required"""
         with pytest.raises(ValidationError):
-            UserCreate(
-                clerk_user_id="clerk_123",
-                email="not-an-email",
-                display_name="Test User"
-            )
+            UserCreate(display_name="Test User")
 
 
 class TestAccountCreate:
@@ -57,25 +55,21 @@ class TestAccountCreate:
     def test_valid_account_create(self):
         """Test creating valid account schema"""
         account = AccountCreate(
-            user_id="user_123",
-            name="My Account",
-            account_type="ira",
-            cash_balance=5000.0
+            account_name="My 401k",
+            account_purpose="Retirement savings",
+            cash_balance=Decimal("5000.00"),
         )
 
-        assert account.user_id == "user_123"
-        assert account.name == "My Account"
-        assert account.account_type == "ira"
-        assert account.cash_balance == 5000.0
+        assert account.account_name == "My 401k"
+        assert account.account_purpose == "Retirement savings"
+        assert account.cash_balance == Decimal("5000.00")
 
     def test_account_validates_cash_balance(self):
         """Test that negative cash balance is rejected"""
         with pytest.raises(ValidationError):
             AccountCreate(
-                user_id="user_123",
-                name="My Account",
-                account_type="ira",
-                cash_balance=-100.0
+                account_name="My Account",
+                cash_balance=Decimal("-100.00"),
             )
 
 
@@ -86,24 +80,21 @@ class TestPositionCreate:
         """Test creating valid position schema"""
         position = PositionCreate(
             account_id="acc_123",
-            instrument_id="inst_123",
-            quantity=100.0,
-            cost_basis=10000.0
+            symbol="VTI",
+            quantity=Decimal("100.5"),
         )
 
         assert position.account_id == "acc_123"
-        assert position.instrument_id == "inst_123"
-        assert position.quantity == 100.0
-        assert position.cost_basis == 10000.0
+        assert position.symbol == "VTI"
+        assert position.quantity == Decimal("100.5")
 
     def test_position_validates_quantity(self):
-        """Test that negative quantity is rejected"""
+        """Test that zero/negative quantity is rejected"""
         with pytest.raises(ValidationError):
             PositionCreate(
                 account_id="acc_123",
-                instrument_id="inst_123",
-                quantity=-10.0,
-                cost_basis=1000.0
+                symbol="VTI",
+                quantity=Decimal("-10.0"),
             )
 
 
@@ -122,22 +113,14 @@ class TestJobCreate:
         assert job.job_type == "portfolio_analysis"
         assert job.request_payload["analysis_type"] == "full"
 
-    def test_job_with_all_fields(self):
-        """Test job creation with all optional fields"""
+    def test_job_create_optional_payload(self):
+        """Test job creation without optional request_payload"""
         job = JobCreate(
             clerk_user_id="clerk_123",
             job_type="portfolio_analysis",
-            request_payload={"test": True},
-            summary_payload={"summary": "Test"},
-            report_payload={"report": "Test report"},
-            charts_payload={"chart1": {}},
-            retirement_payload={"success_rate": 85.0}
         )
 
-        assert job.summary_payload is not None
-        assert job.report_payload is not None
-        assert job.charts_payload is not None
-        assert job.retirement_payload is not None
+        assert job.request_payload is None
 
 
 class TestJobUpdate:
@@ -146,39 +129,53 @@ class TestJobUpdate:
     def test_valid_job_update(self):
         """Test creating valid job update schema"""
         update = JobUpdate(
-            status="in_progress"
+            status="running"
         )
 
-        assert update.status == "in_progress"
+        assert update.status == "running"
 
-    def test_job_update_partial(self):
-        """Test that job update can be partial"""
+    def test_job_update_with_result(self):
+        """Test job update with result payload"""
         update = JobUpdate(
-            summary_payload={"summary": "Updated"}
+            status="completed",
+            result_payload={"summary": "Analysis complete"}
         )
 
-        assert update.summary_payload is not None
-        assert update.status is None  # Not required
+        assert update.result_payload is not None
+        assert update.result_payload["summary"] == "Analysis complete"
+
+    def test_job_update_with_error(self):
+        """Test job update with error message"""
+        update = JobUpdate(
+            status="failed",
+            error_message="Agent execution failed"
+        )
+
+        assert update.error_message == "Agent execution failed"
+
+    def test_job_update_rejects_invalid_status(self):
+        """Test that invalid status value is rejected"""
+        with pytest.raises(ValidationError):
+            JobUpdate(status="in_progress")  # Not a valid literal value
 
 
 class TestJobStatus:
-    """Test JobStatus enum"""
+    """Test JobStatus literal type"""
 
     def test_job_status_values(self):
-        """Test that all job status values are valid"""
-        assert JobStatus.PENDING == "pending"
-        assert JobStatus.IN_PROGRESS == "in_progress"
-        assert JobStatus.COMPLETED == "completed"
-        assert JobStatus.FAILED == "failed"
+        """Test that all job status values are valid literals"""
+        # JobStatus is Literal["pending", "running", "completed", "failed"]
+        valid_statuses = ["pending", "running", "completed", "failed"]
+        for status in valid_statuses:
+            update = JobUpdate(status=status)
+            assert update.status == status
 
     def test_job_status_in_schema(self):
-        """Test using JobStatus enum in schema"""
+        """Test using JobStatus in schema"""
         job = JobCreate(
             clerk_user_id="clerk_123",
             job_type="portfolio_analysis",
             request_payload={}
         )
 
-        # Default status should be pending
-        # (if implemented in the schema)
         assert job.clerk_user_id == "clerk_123"

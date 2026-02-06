@@ -10,8 +10,11 @@ Alex (Agentic Learning Equities eXplainer) is a multi-agent SaaS financial plann
 
 ### Session Startup/Shutdown
 ```bash
-python3 kb_start.py          # Master startup: detects VM IP, syncs ARNs, updates CORS, starts API + frontend
-python3 kb_stop.py           # Graceful shutdown of all services
+python3 kb_start.py                    # Master startup: detects VM IP, syncs ARNs, updates CORS, starts API + frontend
+python3 kb_start.py --skip-arn-check   # Start without ARN verification
+python3 kb_start.py --ip-only          # Only update IP config, don't start services
+python3 kb_start.py --verify-only      # Only verify ARNs, don't start services
+python3 kb_stop.py                     # Graceful shutdown of all services
 ```
 `kb_start.py` handles IP changes, ARN sync, CORS config, kills stale processes on ports 3000/8000, and starts both services. Always use this instead of starting services manually.
 
@@ -25,6 +28,7 @@ cd backend/<agent> && uv add <package>                       # Add dependency
 cd backend && uv run deploy_all_lambdas.py                   # Deploy all 5 agents via Terraform
 cd backend && uv run deploy_all_lambdas.py --package         # Re-package + deploy all agents
 ```
+**Workspace layout**: `backend/` is a uv workspace with members `database`, `api`, `scheduler` (shared via `[tool.uv.sources]`). The 5 agent dirs (planner, tagger, reporter, charter, retirement) and `researcher` have independent `pyproject.toml` files outside the workspace. This means agents resolve their own dependencies separately — run `uv sync` inside each agent dir, not from `backend/` root.
 
 ### Database Migrations
 ```bash
@@ -34,13 +38,17 @@ cd backend/database && uv run seed_data.py                   # Seed initial data
 ```
 Migration files are in `backend/database/migrations/`. After recreating Aurora, always run migrations before testing.
 
-### Frontend (NextJS — Pages Router, not App Router)
+### Frontend (Next.js 16 Pages Router — React 19, Tailwind v4, Clerk auth)
 ```bash
-cd frontend && npm run dev          # Dev server (localhost:3000)
-cd frontend && npm run build        # Production build (static export to out/)
-cd frontend && npm test             # Jest unit tests
-cd frontend && npm run test:e2e     # Playwright E2E tests
-cd frontend && npm run lint         # Lint
+cd frontend && npm run dev            # Dev server (localhost:3000)
+cd frontend && npm run build          # Production build (static export to out/)
+cd frontend && npm test               # Jest unit tests
+cd frontend && npm run test:watch     # Jest in watch mode
+cd frontend && npm run test:coverage  # Jest with coverage report
+cd frontend && npm run test:e2e       # Playwright E2E tests (headless)
+cd frontend && npm run test:e2e:ui    # Playwright with interactive UI
+cd frontend && npm run test:e2e:headed # Playwright in headed browser
+cd frontend && npm run lint           # Lint
 ```
 Build uses a config swap: `npm run build` copies `next.config.prod.ts` (with `output: 'export'`) over `next.config.ts`, then `npm run dev` restores `next.config.dev.ts` (SSR mode).
 
@@ -116,10 +124,19 @@ All agents use AWS Bedrock Nova Pro via LiteLLM
 ### Shared Database Module
 `backend/database/` is a shared library (not a deployed agent). All agents import it for Aurora Data API access:
 - `src/client.py` — Aurora Data API connection wrapper
-- `src/models.py` — SQLAlchemy ORM models
+- `src/models.py` — SQLAlchemy ORM models (plus `analysis_history_models.py`, `economic_models.py`, `market_data_models.py`, `technical_models.py`)
 - `src/schemas.py` — Pydantic schemas
-- `migrations/` — 27+ SQL migration files (run via `run_migrations.py`)
+- `migrations/` — SQL migration files 001–005 (schema, progress tracking, fundamentals, economic indicators, technical indicators)
 - Each agent's `package_docker.py` bundles the database module into its Lambda zip
+
+### Shared Market Data Module
+`backend/market_data/` is a shared library providing market data integrations. **Excluded from Lambda packaging** because it depends on pandas/numpy (too large for 250MB limit).
+- `src/market_data/polygon_prices.py` — Polygon.io real-time prices
+- `src/market_data/fmp.py` — Financial Modeling Prep fundamentals
+- `src/market_data/fred.py` — Federal Reserve Economic Data (rates, inflation, GDP)
+- `src/market_data/sentiment.py` — FinBERT sentiment via SageMaker
+- `src/market_data/technical.py` — Technical indicators (pandas-ta)
+- Lambda agents access market data through direct API calls in `backend/planner/market.py` instead
 
 ### Agent Code Pattern (every agent follows this)
 Each agent directory contains: `lambda_handler.py`, `agent.py`, `templates.py`, `test_simple.py`, `test_full.py`, `package_docker.py`

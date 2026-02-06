@@ -88,6 +88,7 @@ class MockDatabase:
         self.positions.create({
             'account_id': account_id,
             'instrument_id': instrument_id,
+            'symbol': 'VTI',
             'quantity': 100.0,
             'cost_basis': 20000.0
         })

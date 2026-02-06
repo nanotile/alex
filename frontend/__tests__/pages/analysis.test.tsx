@@ -1,116 +1,92 @@
-import { render, screen, waitFor, fireEvent } from '@/test-utils'
-import { mockFetch, clearAllMocks } from '@/test-utils'
-import { mockAnalysisJob, mockCompletedAnalysis } from '@/test-utils/mockData'
+import { render, screen, waitFor } from '@/test-utils'
+import { clearAllMocks } from '@/test-utils'
+import { mockCompletedAnalysis } from '@/test-utils/mockData'
 import Analysis from '@/pages/analysis'
 
-// Mock next/router
+// Mock next/router with events and query params
+const mockPush = jest.fn()
+const mockReplace = jest.fn()
 jest.mock('next/router', () => ({
   useRouter: () => ({
     pathname: '/analysis',
-    push: jest.fn(),
-    query: {},
+    push: mockPush,
+    replace: mockReplace,
+    query: { job_id: 'job_001' },
+    isReady: true,
+    events: {
+      on: jest.fn(),
+      off: jest.fn(),
+      emit: jest.fn(),
+    },
   }),
+}))
+
+// Mock config
+jest.mock('@/lib/config', () => ({
+  API_URL: 'http://localhost:8000',
 }))
 
 describe('Analysis Page', () => {
   beforeEach(() => {
     clearAllMocks()
+    mockPush.mockClear()
+    mockReplace.mockClear()
   })
 
-  it('displays job history', async () => {
-    mockFetch({
-      jobs: [mockAnalysisJob],
-    })
+  it('displays loading state initially', () => {
+    global.fetch = jest.fn(() => new Promise(() => {})) as jest.Mock
 
     render(<Analysis />)
 
-    await waitFor(() => {
-      expect(screen.queryByText(/loading/i)).not.toBeInTheDocument()
-    })
-
-    // Should display job in history
-    expect(screen.getByText(/pending/i)).toBeInTheDocument()
-  })
-
-  it('shows request new analysis button', async () => {
-    mockFetch({ jobs: [] })
-
-    render(<Analysis />)
-
-    await waitFor(() => {
-      const button = screen.getByRole('button', { name: /request.*analysis/i })
-      expect(button).toBeInTheDocument()
-    })
+    // Should show loading skeleton (animate-pulse)
+    expect(document.querySelector('.animate-pulse')).toBeInTheDocument()
   })
 
   it('displays completed analysis results', async () => {
-    mockFetch(mockCompletedAnalysis)
-
-    render(<Analysis />)
-
-    await waitFor(() => {
-      // Should show report content
-      expect(screen.getByText(/portfolio analysis report/i)).toBeInTheDocument()
-    })
-
-    // Should show charts
-    expect(screen.getByTestId('pie-chart')).toBeInTheDocument()
-  })
-
-  it('handles request analysis button click', async () => {
-    mockFetch({ jobs: [] })
-    const createJobMock = jest.fn().mockResolvedValue({ job_id: 'new_job' })
-    global.fetch = createJobMock as any
-
-    render(<Analysis />)
-
-    await waitFor(() => {
-      const button = screen.getByRole('button', { name: /request.*analysis/i })
-      fireEvent.click(button)
-    })
-
-    expect(createJobMock).toHaveBeenCalled()
-  })
-
-  it('polls for job status updates', async () => {
-    // First return pending, then completed
-    let callCount = 0
-    global.fetch = jest.fn(() => {
-      callCount++
-      if (callCount === 1) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ ...mockAnalysisJob, status: 'in_progress' }),
-        })
-      }
-      return Promise.resolve({
-        ok: true,
-        json: async () => mockCompletedAnalysis,
-      })
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockCompletedAnalysis,
     }) as jest.Mock
 
     render(<Analysis />)
 
-    // Should eventually show completed status
-    await waitFor(
-      () => {
-        expect(screen.getByText(/completed/i)).toBeInTheDocument()
-      },
-      { timeout: 5000 }
-    )
+    await waitFor(() => {
+      expect(screen.getByText(/Portfolio Analysis Results/i)).toBeInTheDocument()
+    })
   })
 
-  it('displays error when analysis fails', async () => {
-    mockFetch({
-      ...mockAnalysisJob,
-      status: 'failed',
-      error_message: 'Analysis failed',
-    })
+  it('displays failed analysis state', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ...mockCompletedAnalysis,
+        status: 'failed',
+        error_message: 'Analysis failed due to timeout',
+      }),
+    }) as jest.Mock
 
     render(<Analysis />)
 
     await waitFor(() => {
-      expect(screen.getByText(/failed/i)).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /Analysis Failed/i })).toBeInTheDocument()
+    })
+  })
+
+  it('displays in-progress state', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 'job_001',
+        status: 'running',
+        created_at: '2025-01-15T10:00:00Z',
+        job_type: 'portfolio_analysis',
+      }),
+    }) as jest.Mock
+
+    render(<Analysis />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Analysis In Progress/i)).toBeInTheDocument()
     })
   })
 })

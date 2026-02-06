@@ -15,6 +15,10 @@ const customJestConfig = {
     '^@/components/(.*)$': '<rootDir>/components/$1',
     '^@/pages/(.*)$': '<rootDir>/pages/$1',
     '^@/lib/(.*)$': '<rootDir>/lib/$1',
+    // Mock ESM-only modules that Jest can't parse
+    '^react-markdown$': '<rootDir>/__mocks__/react-markdown.tsx',
+    '^remark-gfm$': '<rootDir>/__mocks__/remark-gfm.js',
+    '^remark-breaks$': '<rootDir>/__mocks__/remark-breaks.js',
   },
   collectCoverageFrom: [
     'pages/**/*.{js,jsx,ts,tsx}',

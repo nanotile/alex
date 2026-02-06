@@ -99,7 +99,7 @@ class TestAgentInvocation:
 
         response = json.loads(result['Payload'].read())
         assert response['statusCode'] == 500
-        assert response['body'] contains 'error'
+        assert 'error' in response['body']
 
 
 class TestResultAggregation:

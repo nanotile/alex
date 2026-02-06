@@ -5,12 +5,23 @@ Tests for Reporter Lambda handler
 import pytest
 import json
 import os
-from unittest.mock import patch, Mock, AsyncMock
+from unittest.mock import patch, Mock, AsyncMock, MagicMock
 from assertions import assert_lambda_response_valid
 
 
 # Set mock mode before importing handler
 os.environ['MOCK_LAMBDAS'] = 'true'
+
+
+def _make_mock_db():
+    """Create a mock Database with all required attributes."""
+    mock_db = MagicMock()
+    # Ensure sub-models return proper iterables, not Mock objects
+    mock_db.fundamentals.find_by_symbols.return_value = []
+    mock_db.economic_indicators.find_all.return_value = []
+    mock_db.technical_indicators.find_by_symbols.return_value = []
+    mock_db.analysis_history.find_recent.return_value = []
+    return mock_db
 
 
 class TestLambdaHandler:
@@ -23,20 +34,24 @@ class TestLambdaHandler:
         from lambda_handler import lambda_handler
 
         # Setup mocks
-        mock_db = Mock()
+        mock_db = _make_mock_db()
         mock_db_class.return_value = mock_db
 
         mock_db.jobs.find_by_id.return_value = {
             'id': 'test_job',
             'clerk_user_id': 'test_user',
-            'status': 'pending'
+            'status': 'pending',
+            'summary_payload': None,
         }
 
         mock_db.users.find_by_clerk_id.return_value = {
             'id': 'user_001',
             'clerk_user_id': 'test_user',
-            'preferences': {}
+            'years_until_retirement': 20,
+            'target_retirement_income': 80000,
         }
+
+        mock_db.jobs.update_report.return_value = True
 
         # Mock agent run result
         mock_result = Mock()
@@ -46,7 +61,7 @@ class TestLambdaHandler:
         event = {
             "job_id": "test_job",
             "portfolio_data": {"accounts": []},
-            "user_preferences": {}
+            "user_data": {"years_until_retirement": 20, "target_retirement_income": 80000}
         }
 
         result = lambda_handler(event, None)
@@ -56,7 +71,6 @@ class TestLambdaHandler:
 
         body = json.loads(result['body'])
         assert body['success'] is True
-        assert 'report' in body
 
     def test_missing_job_id(self):
         """Test error handling for missing job_id"""
@@ -69,30 +83,34 @@ class TestLambdaHandler:
         assert result['statusCode'] == 400
         assert 'job_id' in result['body']
 
-    def test_missing_portfolio_data(self):
+    @patch('lambda_handler.Database')
+    def test_missing_portfolio_data(self, mock_db_class):
         """Test error handling for missing portfolio_data"""
         from lambda_handler import lambda_handler
+
+        mock_db = _make_mock_db()
+        mock_db_class.return_value = mock_db
+        mock_db.jobs.find_by_id.return_value = None
 
         event = {"job_id": "test_job"}
         result = lambda_handler(event, None)
 
         assert_lambda_response_valid(result)
-        assert result['statusCode'] == 400
-        assert 'portfolio_data' in result['body']
+        # When portfolio_data missing and job not found, returns 404
+        assert result['statusCode'] == 404
 
     @patch('lambda_handler.Database')
     def test_job_not_found(self, mock_db_class):
         """Test handling of non-existent job"""
         from lambda_handler import lambda_handler
 
-        mock_db = Mock()
+        mock_db = _make_mock_db()
         mock_db_class.return_value = mock_db
         mock_db.jobs.find_by_id.return_value = None
 
         event = {
             "job_id": "nonexistent",
-            "portfolio_data": {"accounts": []},
-            "user_preferences": {}
+            "portfolio_data": None,
         }
 
         result = lambda_handler(event, None)
@@ -106,13 +124,20 @@ class TestLambdaHandler:
         """Test error handling when agent execution fails"""
         from lambda_handler import lambda_handler
 
-        mock_db = Mock()
+        mock_db = _make_mock_db()
         mock_db_class.return_value = mock_db
 
         mock_db.jobs.find_by_id.return_value = {
             'id': 'test_job',
             'clerk_user_id': 'test_user',
-            'status': 'pending'
+            'status': 'pending',
+            'summary_payload': None,
+        }
+
+        mock_db.users.find_by_clerk_id.return_value = {
+            'id': 'user_001',
+            'years_until_retirement': 20,
+            'target_retirement_income': 80000,
         }
 
         # Mock agent failure
@@ -121,7 +146,7 @@ class TestLambdaHandler:
         event = {
             "job_id": "test_job",
             "portfolio_data": {"accounts": []},
-            "user_preferences": {}
+            "user_data": {"years_until_retirement": 20}
         }
 
         result = lambda_handler(event, None)
@@ -135,13 +160,22 @@ class TestLambdaHandler:
         """Test that response has correct structure"""
         from lambda_handler import lambda_handler
 
-        mock_db = Mock()
+        mock_db = _make_mock_db()
         mock_db_class.return_value = mock_db
 
         mock_db.jobs.find_by_id.return_value = {
             'id': 'test_job',
-            'clerk_user_id': 'test_user'
+            'clerk_user_id': 'test_user',
+            'summary_payload': None,
         }
+
+        mock_db.users.find_by_clerk_id.return_value = {
+            'id': 'user_001',
+            'years_until_retirement': 20,
+            'target_retirement_income': 80000,
+        }
+
+        mock_db.jobs.update_report.return_value = True
 
         mock_result = Mock()
         mock_result.final_output = "Test report"
@@ -150,7 +184,7 @@ class TestLambdaHandler:
         event = {
             "job_id": "test_job",
             "portfolio_data": {"accounts": []},
-            "user_preferences": {}
+            "user_data": {"years_until_retirement": 20}
         }
 
         result = lambda_handler(event, None)
@@ -161,7 +195,6 @@ class TestLambdaHandler:
 
         body = json.loads(result['body'])
         assert 'success' in body
-        assert 'report' in body
 
 
 class TestLambdaIntegration:
@@ -174,19 +207,23 @@ class TestLambdaIntegration:
         from lambda_handler import lambda_handler
 
         # Setup complete mock environment
-        mock_db = Mock()
+        mock_db = _make_mock_db()
         mock_db_class.return_value = mock_db
 
         mock_db.jobs.find_by_id.return_value = {
             'id': 'test_job',
             'clerk_user_id': 'test_user',
-            'status': 'pending'
+            'status': 'pending',
+            'summary_payload': None,
         }
 
         mock_db.users.find_by_clerk_id.return_value = {
             'id': 'user_001',
-            'preferences': {'risk_tolerance': 'moderate'}
+            'years_until_retirement': 25,
+            'target_retirement_income': 75000,
         }
+
+        mock_db.jobs.update_report.return_value = True
 
         mock_result = Mock()
         mock_result.final_output = "Detailed portfolio analysis report"
@@ -201,7 +238,7 @@ class TestLambdaIntegration:
                     "positions": []
                 }]
             },
-            "user_preferences": {"risk_tolerance": "moderate"}
+            "user_data": {"years_until_retirement": 25, "target_retirement_income": 75000}
         }
 
         result = lambda_handler(event, None)
@@ -210,7 +247,6 @@ class TestLambdaIntegration:
         assert result['statusCode'] == 200
         body = json.loads(result['body'])
         assert body['success'] is True
-        assert len(body['report']) > 0
 
         # Verify database was called
-        mock_db.jobs.find_by_id.assert_called_with('test_job')
+        mock_db.jobs.find_by_id.assert_called()

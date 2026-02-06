@@ -17,25 +17,25 @@ describe('Home Page', () => {
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
 
-  it('displays welcome message', () => {
+  it('displays hero section content', () => {
     render(<Home />)
 
-    expect(screen.getByText(/welcome/i)).toBeInTheDocument()
+    expect(screen.getByText(/AI-Powered Financial Future/i)).toBeInTheDocument()
   })
 
-  it('shows call-to-action for authenticated users', () => {
+  it('shows dashboard link for authenticated users', () => {
     render(<Home />)
 
-    // Should have a link to dashboard or get started button
-    const cta = screen.getByRole('link', { name: /dashboard|get started/i })
-    expect(cta).toBeInTheDocument()
+    // SignedIn mock renders children, so dashboard links should be visible
+    const dashboardLinks = screen.getAllByText(/Go to Dashboard|Open Dashboard/i)
+    expect(dashboardLinks.length).toBeGreaterThan(0)
   })
 
   it('displays key features', () => {
     render(<Home />)
 
-    // Should highlight main features
-    expect(screen.getByText(/portfolio/i)).toBeInTheDocument()
-    expect(screen.getByText(/analysis|insights/i)).toBeInTheDocument()
+    // Should highlight main features/agents
+    expect(screen.getByText(/Portfolio Analyst/i)).toBeInTheDocument()
+    expect(screen.getByText(/Chart Specialist/i)).toBeInTheDocument()
   })
 })

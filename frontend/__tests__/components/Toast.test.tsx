@@ -1,5 +1,5 @@
-import { render, screen, act } from '@/test-utils'
-import Toast from '@/components/Toast'
+import { render, screen, act } from '@testing-library/react'
+import { ToastContainer, showToast } from '@/components/Toast'
 
 describe('Toast Component', () => {
   beforeEach(() => {
@@ -11,75 +11,64 @@ describe('Toast Component', () => {
   })
 
   it('renders success toast', () => {
-    render(
-      <Toast
-        message="Operation successful"
-        type="success"
-        onClose={jest.fn()}
-      />
-    )
+    render(<ToastContainer />)
+
+    act(() => {
+      showToast('success', 'Operation successful')
+    })
 
     expect(screen.getByText('Operation successful')).toBeInTheDocument()
   })
 
   it('renders error toast', () => {
-    render(
-      <Toast
-        message="An error occurred"
-        type="error"
-        onClose={jest.fn()}
-      />
-    )
+    render(<ToastContainer />)
+
+    act(() => {
+      showToast('error', 'An error occurred')
+    })
 
     expect(screen.getByText('An error occurred')).toBeInTheDocument()
   })
 
   it('renders info toast', () => {
-    render(
-      <Toast
-        message="Information message"
-        type="info"
-        onClose={jest.fn()}
-      />
-    )
+    render(<ToastContainer />)
+
+    act(() => {
+      showToast('info', 'Information message')
+    })
 
     expect(screen.getByText('Information message')).toBeInTheDocument()
   })
 
   it('calls onClose when close button clicked', () => {
-    const onClose = jest.fn()
+    render(<ToastContainer />)
 
-    render(
-      <Toast
-        message="Test message"
-        type="success"
-        onClose={onClose}
-      />
-    )
+    act(() => {
+      showToast('success', 'Test message')
+    })
 
     const closeButton = screen.getByRole('button')
-    closeButton.click()
+    act(() => {
+      closeButton.click()
+    })
 
-    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('Test message')).not.toBeInTheDocument()
   })
 
   it('auto-dismisses after timeout', () => {
-    const onClose = jest.fn()
+    render(<ToastContainer />)
 
-    render(
-      <Toast
-        message="Test message"
-        type="success"
-        onClose={onClose}
-        duration={3000}
-      />
-    )
+    act(() => {
+      showToast('success', 'Test message', 3000)
+    })
+
+    expect(screen.getByText('Test message')).toBeInTheDocument()
 
     // Fast-forward time
     act(() => {
       jest.advanceTimersByTime(3000)
     })
 
-    expect(onClose).toHaveBeenCalled()
+    expect(screen.queryByText('Test message')).not.toBeInTheDocument()
   })
 })

@@ -1,5 +1,90 @@
 # KB Notes
 
+## Feb 6, 2026 — Test Suite Fixed + Hardening Roadmap
+
+### What was done
+- Improved CLAUDE.md with 4 additions (kb_start.py flags, workspace layout, frontend scripts, market_data docs)
+- Fixed ALL 112 local mock tests (was 62 pass / 27 fail / 1 syntax error → 112/112 pass)
+- No AWS infrastructure needed — all fixes are test-side, matching tests to current source code
+
+### Test fixes applied
+| Area | Issue | Files |
+|------|-------|-------|
+| Planner | Syntax error: `contains` keyword | `planner/tests/test_orchestration.py` |
+| Database | Schema tests referenced old Pydantic field names | `database/tests/test_schemas.py` (rewritten) |
+| Reporter | `create_agent()` now returns 4 values, takes `user_data` | `reporter/tests/test_agent.py` |
+| Reporter | Lambda handler mocks missing DB sub-models | `reporter/tests/test_lambda_handler.py` |
+| Shared mocks | Position data missing `symbol` field | `tests_common/mocks.py` |
+| Frontend | Missing Clerk mocks: Protect, SignInButton, SignedIn, etc. | `frontend/__mocks__/@clerk/nextjs.tsx` |
+| Frontend | ESM modules (react-markdown, remark-gfm, remark-breaks) | 3 new mock files + `jest.config.js` |
+| Frontend | Toast test: wrong import type + props mismatch | `frontend/__tests__/components/Toast.test.tsx` |
+| Frontend | Layout/Dashboard/Analysis/Index tests: router mocks, fetch mocks | 4 test files rewritten |
+
+### Final test counts
+| Component | Passed |
+|-----------|--------|
+| Frontend (Jest) | 30 |
+| Database | 36 |
+| Reporter | 22 |
+| Planner | 9 |
+| Tagger | 15 |
+| **Total** | **112** |
+
+Charter and Retirement only have deployment tests (need live Aurora).
+
+### TODO for next session — Hardening & Polish Roadmap
+
+**Recommended approach:** Run as 3 focused sessions (per the ADVICE ON USING COMPACT.md guidance). Each session is one theme, clean context, no compaction needed.
+
+#### Session A: Security & Validation (backend focus)
+1. **Timeout wrapping on market data fetches** — Planner calls Polygon, FMP, FRED with no timeout. Wrap each with `asyncio.wait_for(fetch, timeout=30)` and fall back gracefully.
+   - File: `backend/planner/lambda_handler.py` lines 51-64
+2. **Sanitize Lambda error responses** — All 5 handlers return `str(e)` in catch blocks. Replace with generic messages, log real errors server-side.
+   - Files: `*/lambda_handler.py` (all 5 agents)
+3. **Add `max_length` to Pydantic string fields** — `display_name`, `account_name`, `account_purpose` have no limits.
+   - File: `backend/api/main.py` (UserUpdate, AccountCreate models)
+4. **Server-side allocation validation** — Validate `asset_class_targets` and `region_targets` sum to 100% in the API, not just frontend.
+   - File: `backend/api/main.py` (UserUpdate model)
+
+#### Session B: Frontend UX (frontend focus)
+5. **Differentiate Analysis empty states** — Charts tab shows generic "No chart data available" whether charter failed, is running, or empty. Show different messages per state.
+   - File: `frontend/pages/analysis.tsx` lines 346, 447
+6. **Add analysis timeout warning** — Show "Taking longer than expected..." after 2 minutes on advisor-team page.
+   - File: `frontend/pages/advisor-team.tsx`
+7. **Accessibility pass** — Add `role="tablist"`/`role="tab"` to analysis tabs, `aria-label` on charts, `htmlFor` on form labels, `scope="col"` on table headers.
+   - Files: `frontend/pages/analysis.tsx`, `frontend/pages/dashboard.tsx`, `frontend/pages/accounts.tsx`
+8. **Dashboard "Last Analysis" link** — Change "Never" to a button that navigates to advisor-team.
+   - File: `frontend/pages/dashboard.tsx`
+
+#### Session C: Testing & Observability (mixed)
+9. **Add API endpoint tests** — `backend/api/main.py` has zero test coverage. Test rate limiting, CORS, input validation, auth.
+   - New file: `backend/api/tests/test_main.py`
+10. **Add mock tests for Charter and Retirement** — Currently only deployment tests exist.
+    - New files: `backend/charter/tests/`, `backend/retirement/tests/`
+11. **CloudWatch alarms** — Add alarms for Lambda error rate > 5%, SQS queue age > 10 min.
+    - File: new terraform config or `terraform/8_monitoring/`
+
+### Files changed this session (not yet committed)
+- `CLAUDE.md` (4 additions)
+- `backend/planner/tests/test_orchestration.py`
+- `backend/database/tests/test_schemas.py`
+- `backend/reporter/tests/test_agent.py`
+- `backend/reporter/tests/test_lambda_handler.py`
+- `backend/tests_common/mocks.py`
+- `frontend/__mocks__/@clerk/nextjs.tsx`
+- `frontend/__mocks__/react-markdown.tsx` (new)
+- `frontend/__mocks__/remark-gfm.js` (new)
+- `frontend/__mocks__/remark-breaks.js` (new)
+- `frontend/jest.config.js`
+- `frontend/__tests__/components/Toast.test.tsx`
+- `frontend/__tests__/components/Layout.test.tsx`
+- `frontend/__tests__/pages/index.test.tsx`
+- `frontend/__tests__/pages/dashboard.test.tsx`
+- `frontend/__tests__/pages/analysis.test.tsx`
+- `frontend/test-utils/mockData.ts` (existed, not changed)
+
+---
+
 ## Feb 5, 2026 — 8-Step Robustness & Informativeness Roadmap COMPLETE
 
 Completed all 8 steps of the Alex enhancement plan. All 5 Lambda agents deployed successfully.

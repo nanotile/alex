@@ -1,12 +1,17 @@
 import { render, screen } from '@/test-utils'
 import Layout from '@/components/Layout'
 
-// Mock next/router
+// Mock next/router with events
 jest.mock('next/router', () => ({
   useRouter: () => ({
     pathname: '/dashboard',
     push: jest.fn(),
     query: {},
+    events: {
+      on: jest.fn(),
+      off: jest.fn(),
+      emit: jest.fn(),
+    },
   }),
 }))
 
@@ -30,7 +35,7 @@ describe('Layout Component', () => {
     )
 
     // Check for common navigation items
-    expect(screen.getByText(/dashboard/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/dashboard/i).length).toBeGreaterThan(0)
   })
 
   it('renders user button from Clerk', () => {
