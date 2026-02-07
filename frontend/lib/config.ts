@@ -1,24 +1,30 @@
 // API configuration that works for both local and production environments
 // Use NEXT_PUBLIC_API_URL from environment, with fallback logic for production
-export const getApiUrl = () => {
-  // First, check if NEXT_PUBLIC_API_URL is set (from .env.local)
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
+// Production API Gateway URL
+const API_GATEWAY_URL = 'https://0b75gjui0j.execute-api.us-east-1.amazonaws.com';
 
-  // Fallback logic for production (CloudFront setup)
+export const getApiUrl = (): string => {
+  // Client-side: always use API Gateway for remote access
   if (typeof window !== 'undefined') {
-    // Client-side: check if we're on localhost
-    if (window.location.hostname === 'localhost') {
+    const hostname = window.location.hostname;
+    const port = window.location.port;
+    console.log('getApiUrl: Client-side, hostname:', hostname, 'port:', port);
+
+    // True localhost only - direct browser on the same machine
+    if ((hostname === 'localhost' || hostname === '127.0.0.1') &&
+        (port === '3000' || port === '3004' || port === '3005' || port === '')) {
+      console.log('getApiUrl: True localhost, using http://localhost:8000');
       return 'http://localhost:8000';
-    } else {
-      // Production: use relative path (CloudFront handles routing /api/* to API Gateway)
-      return '';
     }
+
+    // Everything else (VS Code port forward, remote access, production) - use API Gateway
+    console.log('getApiUrl: Using API Gateway:', API_GATEWAY_URL);
+    return API_GATEWAY_URL;
   }
 
   // Server-side during build
-  return '';
+  return 'http://localhost:8000';
 };
 
-export const API_URL = getApiUrl();
+// Make this a getter so it's evaluated fresh each time
+export const API_URL = typeof window !== 'undefined' ? getApiUrl() : 'http://localhost:8000';
