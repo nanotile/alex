@@ -23,12 +23,13 @@ python3 kb_stop.py                     # Graceful shutdown of all services
 cd backend/<agent> && uv run pytest test_simple.py          # Local tests with mocks (MOCK_LAMBDAS=true)
 cd backend/<agent> && uv run pytest test_full.py             # Deployment tests (real AWS)
 cd backend/<agent> && uv run pytest test_simple.py::test_fn -v  # Single test
+cd backend && uv run run_all_tests.py                        # Run ALL agent mock tests at once
 cd backend/<agent> && uv run package_docker.py               # Package for Lambda (Docker must be running!)
 cd backend/<agent> && uv add <package>                       # Add dependency
 cd backend && uv run deploy_all_lambdas.py                   # Deploy all 5 agents via Terraform
 cd backend && uv run deploy_all_lambdas.py --package         # Re-package + deploy all agents
 ```
-**Workspace layout**: `backend/` is a uv workspace with members `database`, `api`, `scheduler` (shared via `[tool.uv.sources]`). The 5 agent dirs (planner, tagger, reporter, charter, retirement) and `researcher` have independent `pyproject.toml` files outside the workspace. This means agents resolve their own dependencies separately — run `uv sync` inside each agent dir, not from `backend/` root.
+**Workspace layout**: `backend/` is a uv workspace with members `database`, `api`, `scheduler` (shared via `[tool.uv.sources]`). The 5 agent dirs (planner, tagger, reporter, charter, retirement) and `researcher` have independent `pyproject.toml` files outside the workspace. This means agents resolve their own dependencies separately — run `uv sync` inside each agent dir, not from `backend/` root. Shared test utilities live in `backend/tests_common/`.
 
 ### Database Migrations
 ```bash
@@ -44,13 +45,17 @@ cd frontend && npm run dev            # Dev server (localhost:3000)
 cd frontend && npm run build          # Production build (static export to out/)
 cd frontend && npm test               # Jest unit tests
 cd frontend && npm run test:watch     # Jest in watch mode
-cd frontend && npm run test:coverage  # Jest with coverage report
+cd frontend && npm run test:coverage  # Jest with coverage (70% threshold)
 cd frontend && npm run test:e2e       # Playwright E2E tests (headless)
 cd frontend && npm run test:e2e:ui    # Playwright with interactive UI
 cd frontend && npm run test:e2e:headed # Playwright in headed browser
 cd frontend && npm run lint           # Lint
 ```
 Build uses a config swap: `npm run build` copies `next.config.prod.ts` (with `output: 'export'`) over `next.config.ts`, then `npm run dev` restores `next.config.dev.ts` (SSR mode).
+
+**Frontend test structure**: Unit tests in `__tests__/`, E2E in `e2e/`, mocks in `__mocks__/` (includes `@clerk/` auth mocks, `react-markdown`, `remark-gfm`), test helpers in `test-utils/`. Path alias `@/*` maps to `./` in both app and test config.
+
+**Frontend env files**: `.env.local` (dev), `.env.production.local` (prod). Key var: `NEXT_PUBLIC_API_URL` — the API Gateway endpoint URL.
 
 ### Cloudflare Pages Deployment (finance.kentbenson.net)
 ```bash
@@ -121,6 +126,9 @@ S3 Vectors ← Bedrock Titan Embeddings + SageMaker FinBERT Sentiment (ProsusAI/
 All agents use AWS Bedrock Nova Pro via LiteLLM
 ```
 
+### Observability (Langfuse)
+Every agent has `observability.py` which configures Langfuse tracing. Traces are initialized with `from agents import trace` and wrapped around `Runner.run()` calls. Langfuse env vars (`LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST`) must be set for tracing to work.
+
 ### Shared Database Module
 `backend/database/` is a shared library (not a deployed agent). All agents import it for Aurora Data API access:
 - `src/client.py` — Aurora Data API connection wrapper
@@ -138,8 +146,18 @@ All agents use AWS Bedrock Nova Pro via LiteLLM
 - `src/market_data/technical.py` — Technical indicators (pandas-ta)
 - Lambda agents access market data through direct API calls in `backend/planner/market.py` instead
 
+### Researcher Agent (App Runner, not Lambda)
+`backend/researcher/` runs on App Runner, not Lambda. Key files:
+- `server.py` — FastAPI server
+- `tools.py` — Research tools
+- `context.py` — Context management
+- `mcp_servers.py` — MCP server integration for external tools
+- `Dockerfile` — Container image (linux/amd64)
+
 ### Agent Code Pattern (every agent follows this)
-Each agent directory contains: `lambda_handler.py`, `agent.py`, `templates.py`, `test_simple.py`, `test_full.py`, `package_docker.py`
+Each agent directory contains: `lambda_handler.py`, `agent.py`, `templates.py`, `observability.py` (Langfuse tracing), `test_simple.py`, `test_full.py`, `package_docker.py`
+
+There is also a `backend/reporter_1/` directory — this is a legacy v1 reporter, ignore it.
 
 ```python
 # lambda_handler.py — standard pattern
@@ -255,4 +273,4 @@ Aurora (Guide 5) is the biggest cost. Destroy when not working: `cd terraform/5_
 - **Reporter**: Portfolio analysis with FMP fundamentals, FRED economic context (rates, inflation, GDP, VIX), and market research from Researcher agent/S3 Vectors. Includes quality guard (0.6 threshold), data sources tracking, SPY/AGG benchmark comparison, and dividend/income analysis.
 - **Charter**: Generates chart specifications as JSON. Includes JSON validation with 1 retry on parse failure. Outputs include benchmark and dividend charts.
 - **Retirement**: Monte Carlo simulations (1000 runs) with 3 scenarios (conservative/base/optimistic), dynamic withdrawal modeling, safe withdrawal rate calculation, what-if recommendations.
-- **Researcher**: Runs on App Runner (not Lambda). Provides investment research context to Reporter via API calls and S3 Vectors.
+- **Researcher**: Runs on App Runner (not Lambda). Provides investment research context to Reporter via API calls and S3 Vectors. Has MCP server integration (`mcp_servers.py`) for external tool access.
