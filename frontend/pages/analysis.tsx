@@ -131,7 +131,7 @@ export default function Analysis() {
       // Router is ready but no job_id provided - fetch the latest analysis
       loadLatestJob();
     }
-  }, [job_id, router.isReady, getToken, router]);
+  }, [job_id, router.isReady, getToken]);
 
 
   const formatDate = (dateString: string) => {
@@ -147,12 +147,14 @@ export default function Analysis() {
   if (loading) {
     return (
       <Layout>
-        <div className="min-h-screen bg-gray-50 py-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white rounded-lg shadow px-8 py-12 text-center">
-              <div className="animate-pulse">
-                <div className="h-8 bg-gray-200 rounded w-1/3 mx-auto mb-4"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+        <div className="dashboard-premium-wrapper">
+          <div className="dashboard-premium">
+            <div className="dashboard-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="card-premium px-8 py-12 text-center">
+                <div className="animate-pulse">
+                  <div className="h-8 bg-[#252529] rounded w-1/3 mx-auto mb-4"></div>
+                  <div className="h-4 bg-[#252529] rounded w-1/2 mx-auto"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -164,25 +166,27 @@ export default function Analysis() {
   if (!job) {
     return (
       <Layout>
-        <div className="min-h-screen bg-gray-50 py-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white rounded-lg shadow px-8 py-12 text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                {fetchingLatest ? 'Loading Latest Analysis...' : 'No Analysis Available'}
-              </h2>
-              <p className="text-gray-600 mb-6">
-                {fetchingLatest
-                  ? 'Please wait while we load your latest analysis.'
-                  : 'You have not completed any analyses yet. Start a new analysis to see results here.'}
-              </p>
-              {!fetchingLatest && (
-                <button
-                  onClick={() => router.push('/advisor-team')}
-                  className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-600 font-semibold"
-                >
-                  Start New Analysis
-                </button>
-              )}
+        <div className="dashboard-premium-wrapper">
+          <div className="dashboard-premium">
+            <div className="dashboard-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="card-premium px-8 py-12 text-center">
+                <h2 className="font-display text-2xl font-bold text-[#FAFAFA] mb-4">
+                  {fetchingLatest ? 'Loading Latest Analysis...' : 'No Analysis Available'}
+                </h2>
+                <p className="text-[#6B6B6B] mb-6">
+                  {fetchingLatest
+                    ? 'Please wait while we load your latest analysis.'
+                    : 'You have not completed any analyses yet. Start a new analysis to see results here.'}
+                </p>
+                {!fetchingLatest && (
+                  <button
+                    onClick={() => router.push('/advisor-team')}
+                    className="btn-premium"
+                  >
+                    Start New Analysis
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -193,22 +197,24 @@ export default function Analysis() {
   if (job.status === 'running' || job.status === 'pending') {
     return (
       <Layout>
-        <div className="min-h-screen bg-gray-50 py-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white rounded-lg shadow px-8 py-12 text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Analysis In Progress</h2>
-              <p className="text-gray-600 mb-6">Your analysis is still being processed. Please check back in a few moments.</p>
-              <div className="flex justify-center space-x-2 mb-6">
-                <div className="w-3 h-3 bg-ai-accent rounded-full animate-pulse"></div>
-                <div className="w-3 h-3 bg-ai-accent rounded-full animate-pulse delay-75"></div>
-                <div className="w-3 h-3 bg-ai-accent rounded-full animate-pulse delay-150"></div>
+        <div className="dashboard-premium-wrapper">
+          <div className="dashboard-premium">
+            <div className="dashboard-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="card-premium px-8 py-12 text-center">
+                <h2 className="font-display text-2xl font-bold text-[#FAFAFA] mb-4">Analysis In Progress</h2>
+                <p className="text-[#6B6B6B] mb-6">Your analysis is still being processed. Please check back in a few moments.</p>
+                <div className="flex justify-center space-x-2 mb-6">
+                  <div className="w-3 h-3 bg-[#D4AF37] rounded-full animate-pulse"></div>
+                  <div className="w-3 h-3 bg-[#D4AF37] rounded-full animate-pulse delay-75"></div>
+                  <div className="w-3 h-3 bg-[#D4AF37] rounded-full animate-pulse delay-150"></div>
+                </div>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="btn-secondary"
+                >
+                  Refresh
+                </button>
               </div>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-600 font-semibold"
-              >
-                Refresh
-              </button>
             </div>
           </div>
         </div>
@@ -219,22 +225,24 @@ export default function Analysis() {
   if (job.status === 'failed') {
     return (
       <Layout>
-        <div className="min-h-screen bg-gray-50 py-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white rounded-lg shadow px-8 py-12">
-              <h2 className="text-2xl font-bold text-red-600 mb-4">Analysis Failed</h2>
-              <p className="text-gray-600 mb-4">The analysis encountered an error and could not be completed.</p>
-              {job.error_message && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                  <p className="text-sm text-red-800">{job.error_message}</p>
-                </div>
-              )}
-              <button
-                onClick={() => router.push('/advisor-team')}
-                className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-blue-600 font-semibold"
-              >
-                Try Another Analysis
-              </button>
+        <div className="dashboard-premium-wrapper">
+          <div className="dashboard-premium">
+            <div className="dashboard-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="card-premium px-8 py-12">
+                <h2 className="font-display text-2xl font-bold text-red-400 mb-4">Analysis Failed</h2>
+                <p className="text-[#6B6B6B] mb-4">The analysis encountered an error and could not be completed.</p>
+                {job.error_message && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+                    <p className="text-sm text-red-400">{job.error_message}</p>
+                  </div>
+                )}
+                <button
+                  onClick={() => router.push('/advisor-team')}
+                  className="btn-premium"
+                >
+                  Try Another Analysis
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -252,18 +260,18 @@ export default function Analysis() {
         <div className="text-center py-12">
           {hasError ? (
             <>
-              <p className="text-red-600 font-semibold mb-2">Report generation failed</p>
-              <p className="text-gray-500 text-sm">The Portfolio Analyst encountered an error during analysis. Try running a new analysis.</p>
+              <p className="text-red-400 font-semibold mb-2">Report generation failed</p>
+              <p className="text-[#6B6B6B] text-sm">The Portfolio Analyst encountered an error during analysis. Try running a new analysis.</p>
             </>
           ) : (
             <>
-              <p className="text-gray-700 font-semibold mb-2">No portfolio report available</p>
-              <p className="text-gray-500 text-sm">The Portfolio Analyst did not produce a report for this analysis.</p>
+              <p className="text-[#A3A3A3] font-semibold mb-2">No portfolio report available</p>
+              <p className="text-[#6B6B6B] text-sm">The Portfolio Analyst did not produce a report for this analysis.</p>
             </>
           )}
           <button
             onClick={() => router.push('/advisor-team')}
-            className="mt-4 px-5 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 text-sm font-semibold"
+            className="mt-4 btn-premium px-5 py-2 text-sm"
           >
             Run New Analysis
           </button>
@@ -272,28 +280,28 @@ export default function Analysis() {
     }
 
     return (
-      <div className="prose prose-lg max-w-none">
+      <div className="prose prose-lg prose-invert max-w-none">
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkBreaks]}
           components={{
-            h1: ({children}) => <h1 className="text-3xl font-bold mb-4 text-gray-900">{children}</h1>,
-            h2: ({children}) => <h2 className="text-2xl font-semibold mb-3 text-gray-800 mt-6">{children}</h2>,
-            h3: ({children}) => <h3 className="text-xl font-medium mb-2 text-gray-700 mt-4">{children}</h3>,
+            h1: ({children}) => <h1 className="text-3xl font-bold mb-4 text-white">{children}</h1>,
+            h2: ({children}) => <h2 className="text-2xl font-semibold mb-3 text-gray-200 mt-6">{children}</h2>,
+            h3: ({children}) => <h3 className="text-xl font-medium mb-2 text-gray-300 mt-4">{children}</h3>,
             ul: ({children}) => <ul className="list-disc ml-6 mb-4 space-y-1">{children}</ul>,
             ol: ({children}) => <ol className="list-decimal ml-6 mb-4 space-y-1">{children}</ol>,
-            li: ({children}) => <li className="text-gray-700">{children}</li>,
-            p: ({children}) => <p className="mb-4 text-gray-700 leading-relaxed">{children}</p>,
+            li: ({children}) => <li className="text-gray-300">{children}</li>,
+            p: ({children}) => <p className="mb-4 text-gray-300 leading-relaxed">{children}</p>,
             table: ({children}) => (
               <div className="overflow-x-auto mb-6">
                 <table className="w-full border-collapse">{children}</table>
               </div>
             ),
-            thead: ({children}) => <thead className="bg-gray-100">{children}</thead>,
-            th: ({children}) => <th scope="col" className="p-3 text-left font-semibold border border-gray-300">{children}</th>,
-            td: ({children}) => <td className="p-3 border border-gray-300">{children}</td>,
-            strong: ({children}) => <strong className="font-semibold text-gray-900">{children}</strong>,
+            thead: ({children}) => <thead className="bg-[#252529]">{children}</thead>,
+            th: ({children}) => <th scope="col" className="p-3 text-left font-semibold border border-[rgba(255,255,255,0.06)] text-gray-200">{children}</th>,
+            td: ({children}) => <td className="p-3 border border-[rgba(255,255,255,0.06)] text-gray-300">{children}</td>,
+            strong: ({children}) => <strong className="font-semibold text-white">{children}</strong>,
             blockquote: ({children}) => (
-              <blockquote className="border-l-4 border-primary pl-4 my-4 italic text-gray-600">
+              <blockquote className="border-l-4 border-[#D4AF37] pl-4 my-4 italic text-[#A3A3A3]">
                 {children}
               </blockquote>
             ),
@@ -313,18 +321,18 @@ export default function Analysis() {
         <div className="text-center py-12">
           {hasError ? (
             <>
-              <p className="text-red-600 font-semibold mb-2">Chart generation failed</p>
-              <p className="text-gray-500 text-sm">The Chart Specialist encountered an error during analysis. Try running a new analysis.</p>
+              <p className="text-red-400 font-semibold mb-2">Chart generation failed</p>
+              <p className="text-[#6B6B6B] text-sm">The Chart Specialist encountered an error during analysis. Try running a new analysis.</p>
             </>
           ) : (
             <>
-              <p className="text-gray-700 font-semibold mb-2">No charts were generated</p>
-              <p className="text-gray-500 text-sm">The Chart Specialist did not produce any visualizations for this analysis. This can happen if portfolio data was insufficient.</p>
+              <p className="text-[#A3A3A3] font-semibold mb-2">No charts were generated</p>
+              <p className="text-[#6B6B6B] text-sm">The Chart Specialist did not produce any visualizations for this analysis. This can happen if portfolio data was insufficient.</p>
             </>
           )}
           <button
             onClick={() => router.push('/advisor-team')}
-            className="mt-4 px-5 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 text-sm font-semibold"
+            className="mt-4 btn-premium px-5 py-2 text-sm"
           >
             Run New Analysis
           </button>
@@ -384,8 +392,8 @@ export default function Analysis() {
           const title = chartData.title || formatTitle(key);
 
           return (
-            <div key={key} className="bg-white rounded-lg p-6 border border-gray-200">
-              <h3 className="text-xl font-semibold mb-4 text-gray-800">{title}</h3>
+            <div key={key} className="card-premium p-6">
+              <h3 className="text-xl font-semibold mb-4 text-[#FAFAFA]">{title}</h3>
               <ResponsiveContainer width="100%" height={300} aria-label={`Chart: ${title}`}>
                 {chartType === 'pie' || chartType === 'donut' ? (
                   <PieChart>
@@ -463,7 +471,7 @@ export default function Analysis() {
                         className="w-3 h-3 rounded-full mr-2"
                         style={{ backgroundColor: entry.color || COLORS[idx % COLORS.length] }}
                       />
-                      <span className="text-gray-600">{entry.name}</span>
+                      <span className="text-[#A3A3A3]">{entry.name}</span>
                     </div>
                   ))}
                 </div>
@@ -483,16 +491,16 @@ export default function Analysis() {
         <div className="text-center py-12">
           {hasError ? (
             <>
-              <p className="text-red-600 font-semibold mb-2">Retirement projection failed</p>
-              <p className="text-gray-500 text-sm">The Retirement Planner encountered an error during analysis. Try running a new analysis.</p>
+              <p className="text-red-400 font-semibold mb-2">Retirement projection failed</p>
+              <p className="text-[#6B6B6B] text-sm">The Retirement Planner encountered an error during analysis. Try running a new analysis.</p>
             </>
           ) : (
             <>
-              <p className="text-gray-700 font-semibold mb-2">No retirement projection available</p>
-              <p className="text-gray-500 text-sm">The Retirement Planner did not produce a projection. This can happen if retirement settings (years until retirement, target income) are not configured.</p>
+              <p className="text-[#A3A3A3] font-semibold mb-2">No retirement projection available</p>
+              <p className="text-[#6B6B6B] text-sm">The Retirement Planner did not produce a projection. This can happen if retirement settings (years until retirement, target income) are not configured.</p>
               <button
                 onClick={() => router.push('/dashboard')}
-                className="mt-4 mr-2 px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-semibold"
+                className="mt-4 mr-2 bg-[#252529] hover:bg-[#333] text-[#A3A3A3] px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
               >
                 Configure Settings
               </button>
@@ -500,7 +508,7 @@ export default function Analysis() {
           )}
           <button
             onClick={() => router.push('/advisor-team')}
-            className="mt-4 px-5 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 text-sm font-semibold"
+            className="mt-4 btn-premium px-5 py-2 text-sm"
           >
             Run New Analysis
           </button>
@@ -515,17 +523,17 @@ export default function Analysis() {
       <div className="space-y-8">
         {/* Analysis Section */}
         {retirementAnalysis && (
-          <div className="bg-ai-accent/10 border border-ai-accent/20 rounded-lg p-6">
-            <div className="prose prose-lg max-w-none">
+          <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-6">
+            <div className="prose prose-lg prose-invert max-w-none">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkBreaks]}
                 components={{
-                  h2: ({children}) => <h2 className="text-2xl font-semibold mb-3 text-gray-800">{children}</h2>,
-                  h3: ({children}) => <h3 className="text-xl font-medium mb-2 text-gray-700">{children}</h3>,
-                  p: ({children}) => <p className="text-gray-700 leading-relaxed mb-4">{children}</p>,
-                  strong: ({children}) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                  h2: ({children}) => <h2 className="text-2xl font-semibold mb-3 text-gray-200">{children}</h2>,
+                  h3: ({children}) => <h3 className="text-xl font-medium mb-2 text-gray-300">{children}</h3>,
+                  p: ({children}) => <p className="text-gray-300 leading-relaxed mb-4">{children}</p>,
+                  strong: ({children}) => <strong className="font-semibold text-white">{children}</strong>,
                   ul: ({children}) => <ul className="list-disc ml-6 mt-2 space-y-1">{children}</ul>,
-                  li: ({children}) => <li className="text-gray-700">{children}</li>,
+                  li: ({children}) => <li className="text-gray-300">{children}</li>,
                 }}
               >
                 {retirementAnalysis}
@@ -544,20 +552,21 @@ export default function Analysis() {
         <title>Analysis - Alex AI Financial Advisor</title>
       </Head>
       <Layout>
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="dashboard-premium-wrapper">
+        <div className="dashboard-premium">
+          <div className="dashboard-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
-          <div className="bg-white rounded-lg shadow px-8 py-6 mb-8">
+          <div className="card-premium px-8 py-6 mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-dark mb-2">Portfolio Analysis Results</h1>
-                <p className="text-gray-600">
+                <h1 className="font-display text-3xl font-bold text-[#FAFAFA] mb-2">Portfolio Analysis Results</h1>
+                <p className="text-[#6B6B6B]">
                   Completed on {formatDate(job.created_at)}
                 </p>
               </div>
               <button
                 onClick={() => router.push('/advisor-team')}
-                className="px-6 py-3 bg-ai-accent text-white rounded-lg hover:bg-purple-700 font-semibold"
+                className="btn-premium"
               >
                 New Analysis
               </button>
@@ -565,8 +574,8 @@ export default function Analysis() {
           </div>
 
           {/* Tabs */}
-          <div className="bg-white rounded-lg shadow mb-8">
-            <div className="border-b border-gray-200">
+          <div className="card-premium mb-8">
+            <div className="border-b border-[rgba(255,255,255,0.06)]">
               <nav className="flex -mb-px" role="tablist" aria-label="Analysis results">
                 <button
                   role="tab"
@@ -575,11 +584,11 @@ export default function Analysis() {
                   onClick={() => setActiveTab('overview')}
                   className={`py-3 px-8 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === 'overview'
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-[#D4AF37] text-[#D4AF37]'
+                      : 'border-transparent text-[#6B6B6B] hover:text-[#A3A3A3] hover:border-[rgba(255,255,255,0.1)]'
                   }`}
                 >
-                  📊 Overview
+                  Overview
                 </button>
                 <button
                   role="tab"
@@ -588,11 +597,11 @@ export default function Analysis() {
                   onClick={() => setActiveTab('charts')}
                   className={`py-3 px-8 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === 'charts'
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-[#D4AF37] text-[#D4AF37]'
+                      : 'border-transparent text-[#6B6B6B] hover:text-[#A3A3A3] hover:border-[rgba(255,255,255,0.1)]'
                   }`}
                 >
-                  📈 Charts
+                  Charts
                 </button>
                 <button
                   role="tab"
@@ -601,11 +610,11 @@ export default function Analysis() {
                   onClick={() => setActiveTab('retirement')}
                   className={`py-3 px-8 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === 'retirement'
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-[#D4AF37] text-[#D4AF37]'
+                      : 'border-transparent text-[#6B6B6B] hover:text-[#A3A3A3] hover:border-[rgba(255,255,255,0.1)]'
                   }`}
                 >
-                  🎯 Retirement Projection
+                  Retirement Projection
                 </button>
               </nav>
             </div>
@@ -613,7 +622,7 @@ export default function Analysis() {
 
           {/* Tab Content */}
           <div
-            className="bg-white rounded-lg shadow px-8 py-6"
+            className="card-premium px-8 py-6"
             role="tabpanel"
             id={`tabpanel-${activeTab}`}
             aria-label={`${activeTab} tab content`}
@@ -621,6 +630,7 @@ export default function Analysis() {
             {activeTab === 'overview' && renderOverview()}
             {activeTab === 'charts' && renderCharts()}
             {activeTab === 'retirement' && renderRetirement()}
+          </div>
           </div>
         </div>
       </div>

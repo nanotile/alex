@@ -52,14 +52,11 @@ export default function Accounts() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Accounts received from API:', data);
         // For each account, load positions
         const accountsWithPositions = await Promise.all(
           data.map(async (account: Account) => {
-            console.log('Processing account:', account.id, account.account_name);
             // Skip if account has no ID
             if (!account.id) {
-              console.warn('Account missing ID:', account);
               return { ...account, positions: [] };
             }
 
@@ -75,7 +72,6 @@ export default function Accounts() {
               if (positionsResponse.ok) {
                 const data = await positionsResponse.json();
                 const positions = data.positions || [];
-                console.log(`Loaded ${positions.length} positions for account ${account.id}`);
                 return { ...account, positions };
               }
             } catch (err) {
@@ -84,7 +80,6 @@ export default function Accounts() {
             return { ...account, positions: [] };
           })
         );
-        console.log('Final accounts with positions:', accountsWithPositions);
         setAccounts(accountsWithPositions);
       }
     } catch (error) {
@@ -103,7 +98,6 @@ export default function Accounts() {
   useEffect(() => {
     const handleAnalysisCompleted = () => {
       // Refresh accounts to get updated prices after analysis
-      console.log('Analysis completed - refreshing accounts...');
       loadAccounts();
     };
 
@@ -270,17 +264,19 @@ export default function Accounts() {
         <title>Accounts - Alex AI Financial Advisor</title>
       </Head>
       <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
+      <div className="dashboard-premium-wrapper">
+        <div className="dashboard-premium">
+          <div className="dashboard-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="card-premium rounded-xl p-6 mb-6">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-dark">Investment Accounts</h2>
-              <p className="text-sm text-gray-600 mt-1">Manage your investment accounts and portfolios</p>
+              <h2 className="font-display text-2xl font-bold text-[#FAFAFA]">Investment Accounts</h2>
+              <p className="text-sm text-[#6B6B6B] mt-1">Manage your investment accounts and portfolios</p>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowAddModal(true)}
-                className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                className="btn-premium px-4 py-2 flex items-center gap-2 text-sm"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -291,7 +287,7 @@ export default function Accounts() {
                 <button
                   onClick={populateTestData}
                   disabled={populatingData}
-                  className="bg-accent hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  className="btn-secondary px-4 py-2 text-sm disabled:opacity-50"
                 >
                   {populatingData ? 'Populating...' : 'Populate Test Data'}
                 </button>
@@ -300,7 +296,7 @@ export default function Accounts() {
                 <button
                   onClick={() => setConfirmModal({ isOpen: true, type: 'reset' })}
                   disabled={resettingAccounts}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  className="bg-[#252529] hover:bg-[#333] text-[#A3A3A3] px-4 py-2 rounded-lg transition-colors disabled:opacity-50 text-sm"
                 >
                   {resettingAccounts ? 'Resetting...' : 'Reset All'}
                 </button>
@@ -311,8 +307,8 @@ export default function Accounts() {
           {message && (
             <div className={`mb-4 p-4 rounded-lg ${
               message.type === 'success'
-                ? 'bg-green-50 border border-green-200 text-green-700'
-                : 'bg-red-50 border border-red-200 text-red-700'
+                ? 'bg-green-500/10 border border-green-500/30 text-green-400'
+                : 'bg-red-500/10 border border-red-500/30 text-red-400'
             }`}>
               {message.text}
             </div>
@@ -321,32 +317,32 @@ export default function Accounts() {
           {loading ? (
             <SkeletonTable rows={3} />
           ) : accounts.length === 0 ? (
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-6 text-center">
-              <p className="text-primary font-semibold mb-2">
+            <div className="bg-[#3B82F6]/10 border border-[#3B82F6]/30 rounded-lg p-6 text-center">
+              <p className="text-[#3B82F6] font-semibold mb-2">
                 No accounts found
               </p>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-[#6B6B6B]">
                 Click the &quot;Populate Test Data&quot; button above to create sample accounts with positions
               </p>
             </div>
           ) : (
             <>
               {/* Portfolio Summary */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="card-premium card-highlight rounded-lg p-4 mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">Total Portfolio Value</p>
-                    <p className="text-2xl font-bold text-primary">
+                    <p className="stat-label">Total Portfolio Value</p>
+                    <p className="text-2xl font-bold value-gold">
                       ${calculatePortfolioTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Number of Accounts</p>
-                    <p className="text-2xl font-bold text-dark">{accounts.length}</p>
+                    <p className="stat-label">Number of Accounts</p>
+                    <p className="text-2xl font-bold text-[#FAFAFA]">{accounts.length}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Total Positions</p>
-                    <p className="text-2xl font-bold text-dark">
+                    <p className="stat-label">Total Positions</p>
+                    <p className="text-2xl font-bold text-[#FAFAFA]">
                       {accounts.reduce((sum, acc) => sum + (acc.positions?.length || 0), 0)}
                     </p>
                   </div>
@@ -357,44 +353,44 @@ export default function Accounts() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-gray-200">
-                      <th scope="col" className="text-left py-3 px-4 font-semibold text-gray-700">Account Name</th>
-                      <th scope="col" className="text-left py-3 px-4 font-semibold text-gray-700 hidden md:table-cell">Type</th>
-                      <th scope="col" className="text-right py-3 px-4 font-semibold text-gray-700">Positions</th>
-                      <th scope="col" className="text-right py-3 px-4 font-semibold text-gray-700">Cash</th>
-                      <th scope="col" className="text-right py-3 px-4 font-semibold text-gray-700">Total Value</th>
-                      <th scope="col" className="text-center py-3 px-4 font-semibold text-gray-700">Actions</th>
+                    <tr className="border-b border-[rgba(255,255,255,0.06)]">
+                      <th scope="col" className="text-left py-3 px-4 font-semibold text-[#A3A3A3] text-sm">Account Name</th>
+                      <th scope="col" className="text-left py-3 px-4 font-semibold text-[#A3A3A3] text-sm hidden md:table-cell">Type</th>
+                      <th scope="col" className="text-right py-3 px-4 font-semibold text-[#A3A3A3] text-sm">Positions</th>
+                      <th scope="col" className="text-right py-3 px-4 font-semibold text-[#A3A3A3] text-sm">Cash</th>
+                      <th scope="col" className="text-right py-3 px-4 font-semibold text-[#A3A3A3] text-sm">Total Value</th>
+                      <th scope="col" className="text-center py-3 px-4 font-semibold text-[#A3A3A3] text-sm">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {accounts.map((account) => {
                       const positionsValue = calculateAccountTotal(account) - Number(account.cash_balance);
                       return (
-                        <tr key={account.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                        <tr key={account.id} className="border-b border-[rgba(255,255,255,0.06)] hover:bg-[rgba(255,255,255,0.03)] transition-colors">
                           <td className="py-4 px-4">
                             <div>
-                              <p className="font-semibold text-dark">{account.account_name}</p>
-                              <p className="text-xs text-gray-500 md:hidden">{account.account_purpose}</p>
+                              <p className="font-semibold text-[#FAFAFA]">{account.account_name}</p>
+                              <p className="text-xs text-[#6B6B6B] md:hidden">{account.account_purpose}</p>
                             </div>
                           </td>
                           <td className="py-4 px-4 hidden md:table-cell">
-                            <span className="text-sm text-gray-600">{account.account_purpose}</span>
+                            <span className="text-sm text-[#A3A3A3]">{account.account_purpose}</span>
                           </td>
                           <td className="py-4 px-4 text-right">
                             <div>
-                              <p className="font-medium">{account.positions?.length || 0}</p>
+                              <p className="font-medium text-[#FAFAFA]">{account.positions?.length || 0}</p>
                               {positionsValue > 0 && (
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-[#6B6B6B]">
                                   ${positionsValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                 </p>
                               )}
                             </div>
                           </td>
-                          <td className="py-4 px-4 text-right">
+                          <td className="py-4 px-4 text-right text-[#A3A3A3]">
                             ${Number(account.cash_balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                           <td className="py-4 px-4 text-right">
-                            <p className="font-semibold text-primary">
+                            <p className="font-semibold value-gold">
                               ${calculateAccountTotal(account).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
                           </td>
@@ -402,7 +398,7 @@ export default function Accounts() {
                             <div className="flex justify-center gap-2">
                               <button
                                 onClick={() => router.push(`/accounts/${account.id}`)}
-                                className="text-primary hover:bg-primary/10 p-2 rounded transition-colors"
+                                className="text-[#D4AF37] hover:bg-[rgba(212,175,55,0.1)] p-2 rounded transition-colors"
                                 title="View/Edit"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -417,7 +413,7 @@ export default function Accounts() {
                                   accountName: account.account_name
                                 })}
                                 disabled={deletingAccountId === account.id}
-                                className="text-red-600 hover:bg-red-50 p-2 rounded transition-colors disabled:opacity-50"
+                                className="text-red-400 hover:bg-red-500/20 p-2 rounded transition-colors disabled:opacity-50"
                                 title="Delete"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -438,13 +434,13 @@ export default function Accounts() {
 
         {/* Add Account Modal */}
         {showAddModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-md w-full p-6">
-              <h3 className="text-xl font-bold text-dark mb-4">Add New Account</h3>
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="card-premium max-w-md w-full p-6">
+              <h3 className="text-xl font-bold text-[#FAFAFA] mb-4">Add New Account</h3>
 
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="new-account-name" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="new-account-name" className="block text-sm font-medium text-[#A3A3A3] mb-1">
                     Account Name *
                   </label>
                   <input
@@ -452,13 +448,13 @@ export default function Accounts() {
                     type="text"
                     value={newAccount.name}
                     onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="input-premium w-full"
                     placeholder="e.g., 401k, Roth IRA, Brokerage"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="new-account-purpose" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="new-account-purpose" className="block text-sm font-medium text-[#A3A3A3] mb-1">
                     Account Purpose
                   </label>
                   <input
@@ -466,23 +462,23 @@ export default function Accounts() {
                     type="text"
                     value={newAccount.purpose}
                     onChange={(e) => setNewAccount({ ...newAccount, purpose: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="input-premium w-full"
                     placeholder="e.g., Long-term Growth, Retirement"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="new-account-cash" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="new-account-cash" className="block text-sm font-medium text-[#A3A3A3] mb-1">
                     Initial Cash Balance
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#6B6B6B]">$</span>
                     <input
                       id="new-account-cash"
                       type="text"
                       value={newAccount.cash_balance}
                       onChange={(e) => setNewAccount({ ...newAccount, cash_balance: formatCurrencyInput(e.target.value) })}
-                      className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="input-premium w-full pl-8"
                       placeholder="0.00"
                     />
                   </div>
@@ -490,7 +486,7 @@ export default function Accounts() {
               </div>
 
               {message && message.type === 'error' && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
                   {message.text}
                 </div>
               )}
@@ -499,7 +495,7 @@ export default function Accounts() {
                 <button
                   onClick={handleAddAccount}
                   disabled={savingAccount}
-                  className="flex-1 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                  className="flex-1 btn-premium py-2 px-4 text-sm"
                 >
                   {savingAccount ? 'Creating...' : 'Create Account'}
                 </button>
@@ -509,7 +505,7 @@ export default function Accounts() {
                     setNewAccount({ name: '', purpose: '', cash_balance: '' });
                     setMessage(null);
                   }}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition-colors"
+                  className="flex-1 bg-[#252529] hover:bg-[#333] text-[#A3A3A3] px-4 py-2 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
@@ -525,20 +521,20 @@ export default function Accounts() {
           message={
             confirmModal.type === 'reset' ? (
               <div>
-                <p className="font-semibold mb-2">Are you sure you want to delete all your accounts?</p>
+                <p className="font-semibold mb-2 text-[#FAFAFA]">Are you sure you want to delete all your accounts?</p>
                 <p className="text-sm">This will permanently remove:</p>
                 <ul className="list-disc list-inside text-sm mt-1 ml-2">
                   <li>All {accounts.length} account{accounts.length !== 1 ? 's' : ''}</li>
                   <li>All positions in those accounts</li>
                   <li>All transaction history</li>
                 </ul>
-                <p className="text-sm mt-3 text-red-600 font-semibold">This action cannot be undone.</p>
+                <p className="text-sm mt-3 text-red-400 font-semibold">This action cannot be undone.</p>
               </div>
             ) : (
               <div>
-                <p>Are you sure you want to delete <span className="font-semibold">&ldquo;{confirmModal.accountName}&rdquo;</span>?</p>
+                <p>Are you sure you want to delete <span className="font-semibold text-[#FAFAFA]">&ldquo;{confirmModal.accountName}&rdquo;</span>?</p>
                 <p className="text-sm mt-2">This will also delete all positions in this account.</p>
-                <p className="text-sm mt-2 text-red-600 font-semibold">This action cannot be undone.</p>
+                <p className="text-sm mt-2 text-red-400 font-semibold">This action cannot be undone.</p>
               </div>
             )
           }
@@ -556,6 +552,8 @@ export default function Accounts() {
           onCancel={() => setConfirmModal({ isOpen: false, type: 'reset' })}
           isProcessing={resettingAccounts || deletingAccountId !== null}
         />
+          </div>
+        </div>
       </div>
       </Layout>
     </>
