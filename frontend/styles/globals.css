@@ -21,37 +21,21 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* Light mode only - no dark mode for enterprise look */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: system-ui, -apple-system, sans-serif;
+  background: #0D0D0F;
+  color: #FAFAFA;
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
 }
 
 /* ============================================================
    Premium Dark Theme - Shared across all pages
    ============================================================ */
 
-/* Override Layout's light background */
+/* Premium wrapper — Layout is already dark, no negative margin hacks needed */
 .dashboard-premium-wrapper {
-  background: #0D0D0F !important;
   min-height: 100vh;
-  margin: -2rem -1rem -1.5rem -1rem;
-  padding: 2rem 1rem 1.5rem 1rem;
-}
-
-@media (min-width: 640px) {
-  .dashboard-premium-wrapper {
-    margin: -2rem -1.5rem -1.5rem -1.5rem;
-    padding: 2rem 1.5rem 1.5rem 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .dashboard-premium-wrapper {
-    margin: -2rem -2rem -1.5rem -2rem;
-    padding: 2rem 2rem 1.5rem 2rem;
-  }
 }
 
 .dashboard-premium {

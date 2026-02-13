@@ -17,22 +17,22 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <Protect fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-gray-600">Redirecting to sign in...</p>
+      <div className="dashboard-premium min-h-screen flex items-center justify-center">
+        <div className="text-center relative z-10">
+          <p className="text-[#A3A3A3]">Redirecting to sign in...</p>
         </div>
       </div>
     }>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-[#0D0D0F] flex flex-col">
         {/* Navigation */}
-        <nav className="bg-white shadow-sm border-b">
+        <nav className="bg-[#0D0D0F] border-b border-[rgba(212,175,55,0.15)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               {/* Logo and Brand */}
               <div className="flex items-center gap-8">
                 <Link href="/dashboard" className="flex items-center">
-                  <h1 className="text-xl font-bold text-dark">
-                    Alex <span className="text-primary">AI Financial Advisor</span>
+                  <h1 className="text-xl font-bold text-[#FAFAFA]">
+                    Alex <span className="text-[#D4AF37]">AI Financial Advisor</span>
                   </h1>
                 </Link>
 
@@ -42,8 +42,8 @@ export default function Layout({ children }: LayoutProps) {
                     href="/dashboard"
                     className={`text-sm font-medium transition-colors ${
                       isActive("/dashboard")
-                        ? "text-primary"
-                        : "text-gray-600 hover:text-primary"
+                        ? "text-[#D4AF37]"
+                        : "text-[#A3A3A3] hover:text-[#D4AF37]"
                     }`}
                   >
                     Dashboard
@@ -52,8 +52,8 @@ export default function Layout({ children }: LayoutProps) {
                     href="/accounts"
                     className={`text-sm font-medium transition-colors ${
                       isActive("/accounts")
-                        ? "text-primary"
-                        : "text-gray-600 hover:text-primary"
+                        ? "text-[#D4AF37]"
+                        : "text-[#A3A3A3] hover:text-[#D4AF37]"
                     }`}
                   >
                     Accounts
@@ -62,8 +62,8 @@ export default function Layout({ children }: LayoutProps) {
                     href="/advisor-team"
                     className={`text-sm font-medium transition-colors ${
                       isActive("/advisor-team")
-                        ? "text-primary"
-                        : "text-gray-600 hover:text-primary"
+                        ? "text-[#D4AF37]"
+                        : "text-[#A3A3A3] hover:text-[#D4AF37]"
                     }`}
                   >
                     Advisor Team
@@ -72,8 +72,8 @@ export default function Layout({ children }: LayoutProps) {
                     href="/analysis"
                     className={`text-sm font-medium transition-colors ${
                       isActive("/analysis")
-                        ? "text-primary"
-                        : "text-gray-600 hover:text-primary"
+                        ? "text-[#D4AF37]"
+                        : "text-[#A3A3A3] hover:text-[#D4AF37]"
                     }`}
                   >
                     Analysis
@@ -83,7 +83,7 @@ export default function Layout({ children }: LayoutProps) {
 
               {/* User Section */}
               <div className="flex items-center gap-4">
-                <span className="hidden sm:inline text-sm text-gray-600">
+                <span className="hidden sm:inline text-sm text-[#A3A3A3]">
                   {user?.firstName || user?.emailAddresses[0]?.emailAddress}
                 </span>
                 <UserButton afterSignOutUrl="/" />
@@ -96,8 +96,8 @@ export default function Layout({ children }: LayoutProps) {
                 href="/dashboard"
                 className={`text-sm font-medium transition-colors ${
                   isActive("/dashboard")
-                    ? "text-primary"
-                    : "text-gray-600 hover:text-primary"
+                    ? "text-[#D4AF37]"
+                    : "text-[#A3A3A3] hover:text-[#D4AF37]"
                 }`}
               >
                 Dashboard
@@ -106,8 +106,8 @@ export default function Layout({ children }: LayoutProps) {
                 href="/accounts"
                 className={`text-sm font-medium transition-colors ${
                   isActive("/accounts")
-                    ? "text-primary"
-                    : "text-gray-600 hover:text-primary"
+                    ? "text-[#D4AF37]"
+                    : "text-[#A3A3A3] hover:text-[#D4AF37]"
                 }`}
               >
                 Accounts
@@ -116,8 +116,8 @@ export default function Layout({ children }: LayoutProps) {
                 href="/advisor-team"
                 className={`text-sm font-medium transition-colors ${
                   isActive("/advisor-team")
-                    ? "text-primary"
-                    : "text-gray-600 hover:text-primary"
+                    ? "text-[#D4AF37]"
+                    : "text-[#A3A3A3] hover:text-[#D4AF37]"
                 }`}
               >
                 Advisor Team
@@ -126,8 +126,8 @@ export default function Layout({ children }: LayoutProps) {
                 href="/analysis"
                 className={`text-sm font-medium transition-colors ${
                   isActive("/analysis")
-                    ? "text-primary"
-                    : "text-gray-600 hover:text-primary"
+                    ? "text-[#D4AF37]"
+                    : "text-[#A3A3A3] hover:text-[#D4AF37]"
                 }`}
               >
                 Analysis
@@ -144,20 +144,20 @@ export default function Layout({ children }: LayoutProps) {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t mt-auto">
+        <footer className="bg-[#0D0D0F] border-t border-[rgba(212,175,55,0.15)] mt-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-sm text-gray-700 font-medium mb-2">
+            <div className="bg-[rgba(212,175,55,0.06)] border border-[rgba(212,175,55,0.15)] rounded-lg p-4">
+              <p className="text-sm text-[#D4AF37] font-medium mb-2">
                 Important Disclaimer
               </p>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-[#A3A3A3]">
                 This AI-generated advice has not been vetted by a qualified financial advisor and should not be used for trading decisions.
                 For informational purposes only. Always consult with a licensed financial professional before making investment decisions.
               </p>
             </div>
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <p className="text-xs text-gray-500 text-center">
-                © 2026 Alex AI Financial Advisor. Powered by AI agents and built with care.
+            <div className="mt-4 pt-4 border-t border-[rgba(255,255,255,0.06)]">
+              <p className="text-xs text-[#6B6B6B] text-center">
+                &copy; 2026 Alex AI Financial Advisor. Powered by AI agents and built with care.
               </p>
             </div>
           </div>
