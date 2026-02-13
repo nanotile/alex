@@ -11,8 +11,6 @@ interface Agent {
   name: string;
   role: string;
   description: string;
-  color: string;
-  bgColor: string;
 }
 
 interface Job {
@@ -35,32 +33,24 @@ const agents: Agent[] = [
     name: 'Financial Planner',
     role: 'Orchestrator',
     description: 'Coordinates your financial analysis',
-    color: 'text-ai-accent',
-    bgColor: 'bg-ai-accent'
   },
   {
     icon: '📊',
     name: 'Portfolio Analyst',
     role: 'Reporter',
     description: 'Analyzes your holdings and performance',
-    color: 'text-primary',
-    bgColor: 'bg-primary'
   },
   {
     icon: '📈',
     name: 'Chart Specialist',
     role: 'Charter',
     description: 'Visualizes your portfolio composition',
-    color: 'text-green-600',
-    bgColor: 'bg-green-600'
   },
   {
     icon: '🎯',
     name: 'Retirement Planner',
     role: 'Retirement',
     description: 'Projects your retirement readiness',
-    color: 'text-accent',
-    bgColor: 'bg-accent'
   }
 ];
 
@@ -276,13 +266,13 @@ export default function AdvisorTeam() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'text-green-600';
+        return 'text-[#10B981]';
       case 'failed':
-        return 'text-red-500';
+        return 'text-[#EF4444]';
       case 'running':
-        return 'text-blue-600';
+        return 'text-[#3B82F6]';
       default:
-        return 'text-gray-500';
+        return 'text-[#6B6B6B]';
     }
   };
 
@@ -296,35 +286,42 @@ export default function AdvisorTeam() {
         <title>Advisor Team - Alex AI Financial Advisor</title>
       </Head>
       <Layout>
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-lg shadow px-8 py-6 mb-8">
-            <h1 className="text-3xl font-bold text-dark mb-2">Your AI Advisory Team</h1>
-            <p className="text-gray-600">
+      <div className="dashboard-premium-wrapper">
+        <div className="dashboard-premium">
+          <div className="dashboard-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+
+          {/* Header */}
+          <div className="fade-in mb-10">
+            <p className="stat-label mb-2">Your Team</p>
+            <h1 className="font-display text-4xl md:text-5xl font-semibold text-[#FAFAFA] mb-2">
+              AI Advisory Team
+            </h1>
+            <p className="text-[#6B6B6B]">
               Meet your team of specialized AI agents that work together to provide comprehensive financial analysis.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Agent Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10 fade-in fade-in-delay-1">
             {agents.map((agent) => (
               <div
                 key={agent.name}
-                className={`bg-white rounded-lg shadow-lg p-6 relative overflow-hidden transition-all duration-300 ${
-                  isAgentActive(agent.name) ? 'ring-4 ring-ai-accent ring-opacity-50' : ''
+                className={`card-premium p-6 relative overflow-hidden transition-all duration-300 ${
+                  isAgentActive(agent.name) ? 'ring-2 ring-[#D4AF37] ring-opacity-60' : ''
                 }`}
               >
                 {isAgentActive(agent.name) && (
-                  <div className="absolute inset-0 bg-gradient-to-br from-ai-accent/20 to-transparent animate-strong-pulse" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-[rgba(212,175,55,0.15)] to-transparent animate-strong-pulse" />
                 )}
                 <div className="relative">
                   <div className={`text-5xl mb-4 ${isAgentActive(agent.name) ? 'animate-strong-pulse' : ''}`}>{agent.icon}</div>
-                  <h3 className={`text-xl font-semibold mb-1 ${agent.color}`}>
+                  <h3 className="text-xl font-semibold mb-1 text-[#D4AF37]">
                     {agent.name}
                   </h3>
-                  <p className="text-sm text-gray-500 mb-3">{agent.role}</p>
-                  <p className="text-gray-600 text-sm">{agent.description}</p>
+                  <p className="text-sm text-[#6B6B6B] mb-3">{agent.role}</p>
+                  <p className="text-[#A3A3A3] text-sm">{agent.description}</p>
                   {isAgentActive(agent.name) && (
-                    <div className={`mt-4 inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold text-white ${agent.bgColor} animate-strong-pulse`}>
+                    <div className="mt-4 inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold text-[#0D0D0F] bg-[#D4AF37] animate-strong-pulse">
                       <span className="mr-2">●</span>
                       Active
                     </div>
@@ -334,58 +331,55 @@ export default function AdvisorTeam() {
             ))}
           </div>
 
-          <div className="bg-white rounded-lg shadow px-8 py-6">
+          {/* Analysis Center */}
+          <div className="card-premium p-8 fade-in fade-in-delay-2">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-dark">Analysis Center</h2>
+              <h2 className="font-display text-2xl text-[#FAFAFA]">Analysis Center</h2>
               <button
                 onClick={startAnalysis}
                 disabled={isAnalyzing}
-                className={`px-8 py-4 rounded-lg font-semibold text-white transition-all ${
-                  isAnalyzing
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-ai-accent hover:bg-purple-700 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
-                }`}
+                className="btn-premium"
               >
                 {isAnalyzing ? 'Analysis in Progress...' : 'Start New Analysis'}
               </button>
             </div>
 
             {isAnalyzing && (
-              <div className="mb-8 p-6 bg-gradient-to-r from-ai-accent/10 to-primary/10 rounded-lg border border-ai-accent/20">
+              <div className="mb-8 p-6 card-highlight rounded-xl">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-dark">Analysis Progress</h3>
+                  <h3 className="text-lg font-semibold text-[#FAFAFA]">Analysis Progress</h3>
                   {progress.stage !== 'error' && progress.stage !== 'complete' && (
                     <div className="flex space-x-2">
-                      <div className="w-3 h-3 bg-ai-accent rounded-full animate-strong-pulse" />
-                      <div className="w-3 h-3 bg-ai-accent rounded-full animate-strong-pulse" style={{ animationDelay: '0.5s' }} />
-                      <div className="w-3 h-3 bg-ai-accent rounded-full animate-strong-pulse" style={{ animationDelay: '1s' }} />
+                      <div className="w-3 h-3 bg-[#D4AF37] rounded-full animate-strong-pulse" />
+                      <div className="w-3 h-3 bg-[#D4AF37] rounded-full animate-strong-pulse" style={{ animationDelay: '0.5s' }} />
+                      <div className="w-3 h-3 bg-[#D4AF37] rounded-full animate-strong-pulse" style={{ animationDelay: '1s' }} />
                     </div>
                   )}
                 </div>
 
                 <p className={`text-sm mb-4 ${
-                  progress.stage === 'error' ? 'text-red-600' : 'text-gray-600'
+                  progress.stage === 'error' ? 'text-[#EF4444]' : 'text-[#A3A3A3]'
                 }`}>
                   {progress.message}
                 </p>
 
                 {showTimeoutWarning && progress.stage !== 'error' && progress.stage !== 'complete' && (
-                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-sm text-amber-800 font-medium">Taking longer than expected...</p>
-                    <p className="text-xs text-amber-600 mt-1">Analysis typically completes within 2 minutes. The agents are still working. You can wait or try again later.</p>
+                  <div className="mb-4 p-3 bg-[rgba(212,175,55,0.08)] border border-[rgba(212,175,55,0.2)] rounded-lg">
+                    <p className="text-sm text-[#D4AF37] font-medium">Taking longer than expected...</p>
+                    <p className="text-xs text-[#A3A3A3] mt-1">Analysis typically completes within 2 minutes. The agents are still working. You can wait or try again later.</p>
                   </div>
                 )}
 
                 {progress.stage === 'error' && progress.error && (
-                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-800">{progress.error}</p>
+                  <div className="mt-4 p-4 bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.2)] rounded-lg">
+                    <p className="text-sm text-[#EF4444]">{progress.error}</p>
                     <button
                       onClick={() => {
                         setIsAnalyzing(false);
                         setCurrentJobId(null);
                         setProgress({ stage: 'idle', message: '', activeAgents: [] });
                       }}
-                      className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-semibold"
+                      className="mt-3 px-4 py-2 bg-[#EF4444] text-white rounded-lg hover:bg-[#DC2626] text-sm font-semibold transition-colors"
                     >
                       Try Again
                     </button>
@@ -393,9 +387,9 @@ export default function AdvisorTeam() {
                 )}
 
                 {progress.stage !== 'idle' && progress.stage !== 'error' && (
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-[#252529] rounded-full h-2">
                     <div
-                      className="bg-ai-accent h-2 rounded-full transition-all duration-1000"
+                      className="bg-gradient-to-r from-[#D4AF37] to-[#E8D48A] h-2 rounded-full transition-all duration-1000"
                       style={{
                         width: progress.stage === 'starting' ? '10%' :
                                progress.stage === 'planner' ? '30%' :
@@ -409,22 +403,24 @@ export default function AdvisorTeam() {
               </div>
             )}
 
+            {/* Previous Analyses */}
             <div>
-              <h3 className="text-lg font-semibold text-dark mb-4">Previous Analyses</h3>
+              <div className="divider-gold mb-6" />
+              <h3 className="stat-label mb-4">Previous Analyses</h3>
               {jobs.length === 0 ? (
-                <p className="text-gray-500 italic">No previous analyses found. Start your first analysis above!</p>
+                <p className="text-[#6B6B6B] italic">No previous analyses found. Start your first analysis above!</p>
               ) : (
                 <div className="space-y-3">
                   {jobs.slice(0, 5).map((job) => (
                     <div
                       key={job.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      className="flex items-center justify-between p-4 bg-[#1A1A1F] rounded-lg hover:bg-[#252529] transition-colors border border-[rgba(255,255,255,0.06)]"
                     >
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-[#FAFAFA]">
                           Analysis #{job.id.slice(0, 8)}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-[#6B6B6B]">
                           {formatDate(job.created_at)}
                         </p>
                       </div>
@@ -435,7 +431,7 @@ export default function AdvisorTeam() {
                         {job.status === 'completed' && (
                           <button
                             onClick={() => router.push(`/analysis?job_id=${job.id}`)}
-                            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 text-sm font-semibold"
+                            className="btn-secondary text-sm py-2 px-4"
                           >
                             View
                           </button>
@@ -446,6 +442,8 @@ export default function AdvisorTeam() {
                 </div>
               )}
             </div>
+          </div>
+
           </div>
         </div>
       </div>
