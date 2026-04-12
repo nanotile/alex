@@ -1,0 +1,1182 @@
+{
+  "version": 4,
+  "terraform_version": "1.14.3",
+  "serial": 19,
+  "lineage": "d5762ea7-7763-d605-cee6-2cbeeb76f630",
+  "outputs": {
+    "api_gateway_url": {
+      "value": "https://0b75gjui0j.execute-api.us-east-1.amazonaws.com",
+      "type": "string"
+    },
+    "cloudfront_url": {
+      "value": "https://d1hnrs9tdojzww.cloudfront.net",
+      "type": "string"
+    },
+    "lambda_function_name": {
+      "value": "alex-api",
+      "type": "string"
+    },
+    "s3_bucket_name": {
+      "value": "alex-frontend-393470797331",
+      "type": "string"
+    },
+    "setup_instructions": {
+      "value": "\n✅ Frontend \u0026 API infrastructure deployed successfully!\n\nCloudFront URL: https://d1hnrs9tdojzww.cloudfront.net\nAPI Gateway: https://0b75gjui0j.execute-api.us-east-1.amazonaws.com\nS3 Bucket: alex-frontend-393470797331\nLambda Function: alex-api\n\nNext steps:\n\n1. If you deployed manually (not using scripts/deploy.py):\n   a. Build and deploy the frontend:\n      cd frontend\n      npm run build\n      aws s3 sync out/ s3://alex-frontend-393470797331/ --delete\n\n   b. Invalidate CloudFront cache:\n      aws cloudfront create-invalidation \\\n        --distribution-id E18K6AY6UW0RV \\\n        --paths \"/*\"\n\n2. Test the deployment:\n   - Visit: https://d1hnrs9tdojzww.cloudfront.net\n   - Sign in with Clerk\n   - Check API calls in Network tab\n\n3. Monitor in AWS Console:\n   - CloudWatch Logs: /aws/lambda/alex-api\n   - API Gateway metrics\n   - CloudFront metrics\n\nTo destroy: cd scripts \u0026\u0026 uv run destroy.py\n",
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "mode": "data",
+      "type": "aws_caller_identity",
+      "name": "current",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "account_id": "393470797331",
+            "arn": "arn:aws:iam::393470797331:user/ai_enginer_ed",
+            "id": "393470797331",
+            "user_id": "AIDAVXHFP4YJXEBJHNDUQ"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "data",
+      "type": "aws_region",
+      "name": "current",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "description": "US East (N. Virginia)",
+            "endpoint": "ec2.us-east-1.amazonaws.com",
+            "id": "us-east-1",
+            "name": "us-east-1"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "data",
+      "type": "terraform_remote_state",
+      "name": "agents",
+      "provider": "provider[\"terraform.io/builtin/terraform\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "backend": "local",
+            "config": {
+              "value": {
+                "path": "../6_agents/terraform.tfstate"
+              },
+              "type": [
+                "object",
+                {
+                  "path": "string"
+                }
+              ]
+            },
+            "defaults": null,
+            "outputs": {
+              "value": {
+                "lambda_functions": {
+                  "charter": "alex-charter",
+                  "planner": "alex-planner",
+                  "reporter": "alex-reporter",
+                  "retirement": "alex-retirement",
+                  "tagger": "alex-tagger"
+                },
+                "setup_instructions": "    \r\n✅ Agent infrastructure deployed successfully!\r\n    \r\nLambda Functions:\r\n- Planner (Orchestrator): alex-planner\r\n- Tagger: alex-tagger\r\n- Reporter: alex-reporter\r\n- Charter: alex-charter\r\n- Retirement: alex-retirement\r\n    \r\nSQS Queue: alex-analysis-jobs\r\n    \r\nTo test the system:\r\n1. First, package and deploy each agent's code:\r\n   cd backend/planner \u0026\u0026 uv run package_docker.py --deploy\r\n   cd backend/tagger \u0026\u0026 uv run package_docker.py --deploy\r\n   cd backend/reporter \u0026\u0026 uv run package_docker.py --deploy\r\n   cd backend/charter \u0026\u0026 uv run package_docker.py --deploy\r\n   cd backend/retirement \u0026\u0026 uv run package_docker.py --deploy\r\n    \r\n2. Run the full integration test:\r\n   cd backend/planner\r\n   uv run run_full_test.py\r\n    \r\n3. Monitor progress in CloudWatch Logs:\r\n   - /aws/lambda/alex-planner\r\n   - /aws/lambda/alex-tagger\r\n   - /aws/lambda/alex-reporter\r\n   - /aws/lambda/alex-charter\r\n   - /aws/lambda/alex-retirement\r\n    \r\nBedrock Model: us.amazon.nova-pro-v1:0\r\nRegion: us-west-2\r\n",
+                "sqs_queue_arn": "arn:aws:sqs:us-east-1:393470797331:alex-analysis-jobs",
+                "sqs_queue_url": "https://sqs.us-east-1.amazonaws.com/393470797331/alex-analysis-jobs"
+              },
+              "type": [
+                "object",
+                {
+                  "lambda_functions": [
+                    "object",
+                    {
+                      "charter": "string",
+                      "planner": "string",
+                      "reporter": "string",
+                      "retirement": "string",
+                      "tagger": "string"
+                    }
+                  ],
+                  "setup_instructions": "string",
+                  "sqs_queue_arn": "string",
+                  "sqs_queue_url": "string"
+                }
+              ]
+            },
+            "workspace": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "data",
+      "type": "terraform_remote_state",
+      "name": "database",
+      "provider": "provider[\"terraform.io/builtin/terraform\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "backend": "local",
+            "config": {
+              "value": {
+                "path": "../5_database/terraform.tfstate"
+              },
+              "type": [
+                "object",
+                {
+                  "path": "string"
+                }
+              ]
+            },
+            "defaults": null,
+            "outputs": {
+              "value": {
+                "aurora_cluster_arn": "arn:aws:rds:us-east-1:393470797331:cluster:alex-aurora-cluster",
+                "aurora_cluster_endpoint": "alex-aurora-cluster.cluster-c4xuyyo6q1bt.us-east-1.rds.amazonaws.com",
+                "aurora_secret_arn": "arn:aws:secretsmanager:us-east-1:393470797331:secret:alex-aurora-credentials-e9e539bc-v98Ubw",
+                "data_api_enabled": "Enabled",
+                "database_name": "alex",
+                "lambda_role_arn": "arn:aws:iam::393470797331:role/alex-lambda-aurora-role",
+                "setup_instructions": "    \n✅ Aurora Serverless v2 cluster deployed successfully!\n    \nDatabase Details:\n- Cluster: alex-aurora-cluster\n- Database: alex\n- Data API: Enabled\n    \nAdd the following to your .env file:\nAURORA_CLUSTER_ARN=arn:aws:rds:us-east-1:393470797331:cluster:alex-aurora-cluster\nAURORA_SECRET_ARN=arn:aws:secretsmanager:us-east-1:393470797331:secret:alex-aurora-credentials-e9e539bc-v98Ubw\n    \nTest the Data API connection:\naws rds-data execute-statement \\\n  --resource-arn arn:aws:rds:us-east-1:393470797331:cluster:alex-aurora-cluster \\\n  --secret-arn arn:aws:secretsmanager:us-east-1:393470797331:secret:alex-aurora-credentials-e9e539bc-v98Ubw \\\n  --database alex \\\n  --sql \"SELECT version()\"\n    \nTo set up the database schema:\ncd backend/database\nuv run migrate.py\n    \nTo load sample data:\nuv run reset_db.py --with-test-data\n    \n💰 Cost Management:\n- Current scaling: 0.5 - 1 ACUs\n- Estimated cost: ~$43/month minimum\n- To pause: Set min_capacity to 0 (cluster will pause after 5 minutes of inactivity)\n"
+              },
+              "type": [
+                "object",
+                {
+                  "aurora_cluster_arn": "string",
+                  "aurora_cluster_endpoint": "string",
+                  "aurora_secret_arn": "string",
+                  "data_api_enabled": "string",
+                  "database_name": "string",
+                  "lambda_role_arn": "string",
+                  "setup_instructions": "string"
+                }
+              ]
+            },
+            "workspace": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_apigatewayv2_api",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "api_endpoint": "https://0b75gjui0j.execute-api.us-east-1.amazonaws.com",
+            "api_key_selection_expression": "$request.header.x-api-key",
+            "arn": "arn:aws:apigateway:us-east-1::/apis/0b75gjui0j",
+            "body": null,
+            "cors_configuration": [
+              {
+                "allow_credentials": false,
+                "allow_headers": [
+                  "authorization",
+                  "content-type",
+                  "x-amz-date",
+                  "x-amz-security-token",
+                  "x-api-key"
+                ],
+                "allow_methods": [
+                  "DELETE",
+                  "GET",
+                  "OPTIONS",
+                  "POST",
+                  "PUT"
+                ],
+                "allow_origins": [
+                  "*"
+                ],
+                "expose_headers": [],
+                "max_age": 300
+              }
+            ],
+            "credentials_arn": null,
+            "description": "",
+            "disable_execute_api_endpoint": false,
+            "execution_arn": "arn:aws:execute-api:us-east-1:393470797331:0b75gjui0j",
+            "fail_on_warnings": null,
+            "id": "0b75gjui0j",
+            "ip_address_type": "ipv4",
+            "name": "alex-api-gateway",
+            "protocol_type": "HTTP",
+            "route_key": null,
+            "route_selection_expression": "$request.method $request.path",
+            "tags": {
+              "ManagedBy": "terraform",
+              "Part": "7_frontend",
+              "Project": "alex"
+            },
+            "tags_all": {
+              "ManagedBy": "terraform",
+              "Part": "7_frontend",
+              "Project": "alex"
+            },
+            "target": null,
+            "version": ""
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_apigatewayv2_integration",
+      "name": "lambda",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "api_id": "0b75gjui0j",
+            "connection_id": "",
+            "connection_type": "INTERNET",
+            "content_handling_strategy": "",
+            "credentials_arn": "",
+            "description": "",
+            "id": "ljwynq1",
+            "integration_method": "POST",
+            "integration_response_selection_expression": "",
+            "integration_subtype": "",
+            "integration_type": "AWS_PROXY",
+            "integration_uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:393470797331:function:alex-api/invocations",
+            "passthrough_behavior": "",
+            "payload_format_version": "1.0",
+            "request_parameters": {},
+            "request_templates": {},
+            "response_parameters": [],
+            "template_selection_expression": "",
+            "timeout_milliseconds": 30000,
+            "tls_config": []
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_apigatewayv2_api.main",
+            "aws_cloudfront_distribution.main",
+            "aws_iam_role.api_lambda_role",
+            "aws_iam_role_policy.api_lambda_aurora",
+            "aws_iam_role_policy.api_lambda_invoke",
+            "aws_iam_role_policy.api_lambda_sqs",
+            "aws_lambda_function.api",
+            "aws_s3_bucket.frontend",
+            "aws_s3_bucket_website_configuration.frontend",
+            "data.aws_caller_identity.current",
+            "data.aws_region.current",
+            "data.terraform_remote_state.agents",
+            "data.terraform_remote_state.database"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_apigatewayv2_route",
+      "name": "api_any",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "api_id": "0b75gjui0j",
+            "api_key_required": false,
+            "authorization_scopes": [],
+            "authorization_type": "NONE",
+            "authorizer_id": "",
+            "id": "bdtajg8",
+            "model_selection_expression": "",
+            "operation_name": "",
+            "request_models": {},
+            "request_parameter": [],
+            "route_key": "ANY /api/{proxy+}",
+            "route_response_selection_expression": "",
+            "target": "integrations/ljwynq1"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_apigatewayv2_api.main",
+            "aws_apigatewayv2_integration.lambda",
+            "aws_cloudfront_distribution.main",
+            "aws_iam_role.api_lambda_role",
+            "aws_iam_role_policy.api_lambda_aurora",
+            "aws_iam_role_policy.api_lambda_invoke",
+            "aws_iam_role_policy.api_lambda_sqs",
+            "aws_lambda_function.api",
+            "aws_s3_bucket.frontend",
+            "aws_s3_bucket_website_configuration.frontend",
+            "data.aws_caller_identity.current",
+            "data.aws_region.current",
+            "data.terraform_remote_state.agents",
+            "data.terraform_remote_state.database"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_apigatewayv2_route",
+      "name": "api_options",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "api_id": "0b75gjui0j",
+            "api_key_required": false,
+            "authorization_scopes": [],
+            "authorization_type": "NONE",
+            "authorizer_id": "",
+            "id": "luhdp1i",
+            "model_selection_expression": "",
+            "operation_name": "",
+            "request_models": {},
+            "request_parameter": [],
+            "route_key": "OPTIONS /api/{proxy+}",
+            "route_response_selection_expression": "",
+            "target": "integrations/ljwynq1"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_apigatewayv2_api.main",
+            "aws_apigatewayv2_integration.lambda",
+            "aws_cloudfront_distribution.main",
+            "aws_iam_role.api_lambda_role",
+            "aws_iam_role_policy.api_lambda_aurora",
+            "aws_iam_role_policy.api_lambda_invoke",
+            "aws_iam_role_policy.api_lambda_sqs",
+            "aws_lambda_function.api",
+            "aws_s3_bucket.frontend",
+            "aws_s3_bucket_website_configuration.frontend",
+            "data.aws_caller_identity.current",
+            "data.aws_region.current",
+            "data.terraform_remote_state.agents",
+            "data.terraform_remote_state.database"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_apigatewayv2_stage",
+      "name": "default",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "access_log_settings": [],
+            "api_id": "0b75gjui0j",
+            "arn": "arn:aws:apigateway:us-east-1::/apis/0b75gjui0j/stages/$default",
+            "auto_deploy": true,
+            "client_certificate_id": "",
+            "default_route_settings": [
+              {
+                "data_trace_enabled": false,
+                "detailed_metrics_enabled": false,
+                "logging_level": "",
+                "throttling_burst_limit": 100,
+                "throttling_rate_limit": 100
+              }
+            ],
+            "deployment_id": "12d0vo",
+            "description": "",
+            "execution_arn": "arn:aws:execute-api:us-east-1:393470797331:0b75gjui0j/$default",
+            "id": "$default",
+            "invoke_url": "https://0b75gjui0j.execute-api.us-east-1.amazonaws.com/",
+            "name": "$default",
+            "route_settings": [],
+            "stage_variables": {},
+            "tags": {
+              "ManagedBy": "terraform",
+              "Part": "7_frontend",
+              "Project": "alex"
+            },
+            "tags_all": {
+              "ManagedBy": "terraform",
+              "Part": "7_frontend",
+              "Project": "alex"
+            }
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_apigatewayv2_api.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_cloudfront_distribution",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "aliases": [],
+            "arn": "arn:aws:cloudfront::393470797331:distribution/E18K6AY6UW0RV",
+            "caller_reference": "terraform-20251118210859021700000002",
+            "comment": "Alex Financial Advisor Frontend",
+            "continuous_deployment_policy_id": "",
+            "custom_error_response": [
+              {
+                "error_caching_min_ttl": 0,
+                "error_code": 403,
+                "response_code": 200,
+                "response_page_path": "/index.html"
+              },
+              {
+                "error_caching_min_ttl": 0,
+                "error_code": 404,
+                "response_code": 200,
+                "response_page_path": "/index.html"
+              }
+            ],
+            "default_cache_behavior": [
+              {
+                "allowed_methods": [
+                  "GET",
+                  "HEAD",
+                  "OPTIONS"
+                ],
+                "cache_policy_id": "",
+                "cached_methods": [
+                  "GET",
+                  "HEAD"
+                ],
+                "compress": false,
+                "default_ttl": 3600,
+                "field_level_encryption_id": "",
+                "forwarded_values": [
+                  {
+                    "cookies": [
+                      {
+                        "forward": "none",
+                        "whitelisted_names": []
+                      }
+                    ],
+                    "headers": [],
+                    "query_string": false,
+                    "query_string_cache_keys": []
+                  }
+                ],
+                "function_association": [],
+                "grpc_config": [
+                  {
+                    "enabled": false
+                  }
+                ],
+                "lambda_function_association": [],
+                "max_ttl": 86400,
+                "min_ttl": 0,
+                "origin_request_policy_id": "",
+                "realtime_log_config_arn": "",
+                "response_headers_policy_id": "",
+                "smooth_streaming": false,
+                "target_origin_id": "S3-alex-frontend-393470797331",
+                "trusted_key_groups": [],
+                "trusted_signers": [],
+                "viewer_protocol_policy": "redirect-to-https"
+              }
+            ],
+            "default_root_object": "index.html",
+            "domain_name": "d1hnrs9tdojzww.cloudfront.net",
+            "enabled": true,
+            "etag": "E1OFP8KO5ZWW4N",
+            "hosted_zone_id": "Z2FDTNDATAQYW2",
+            "http_version": "http2",
+            "id": "E18K6AY6UW0RV",
+            "in_progress_validation_batches": 0,
+            "is_ipv6_enabled": true,
+            "last_modified_time": "2025-11-18 21:08:59.233 +0000 UTC",
+            "logging_config": [],
+            "ordered_cache_behavior": [
+              {
+                "allowed_methods": [
+                  "DELETE",
+                  "GET",
+                  "HEAD",
+                  "OPTIONS",
+                  "PATCH",
+                  "POST",
+                  "PUT"
+                ],
+                "cache_policy_id": "",
+                "cached_methods": [
+                  "GET",
+                  "HEAD"
+                ],
+                "compress": false,
+                "default_ttl": 0,
+                "field_level_encryption_id": "",
+                "forwarded_values": [
+                  {
+                    "cookies": [
+                      {
+                        "forward": "all",
+                        "whitelisted_names": []
+                      }
+                    ],
+                    "headers": [
+                      "Accept",
+                      "Authorization",
+                      "Content-Type"
+                    ],
+                    "query_string": true,
+                    "query_string_cache_keys": []
+                  }
+                ],
+                "function_association": [],
+                "grpc_config": [
+                  {
+                    "enabled": false
+                  }
+                ],
+                "lambda_function_association": [],
+                "max_ttl": 0,
+                "min_ttl": 0,
+                "origin_request_policy_id": "",
+                "path_pattern": "/api/*",
+                "realtime_log_config_arn": "",
+                "response_headers_policy_id": "",
+                "smooth_streaming": false,
+                "target_origin_id": "API-Gateway",
+                "trusted_key_groups": [],
+                "trusted_signers": [],
+                "viewer_protocol_policy": "redirect-to-https"
+              }
+            ],
+            "origin": [
+              {
+                "connection_attempts": 3,
+                "connection_timeout": 10,
+                "custom_header": [],
+                "custom_origin_config": [
+                  {
+                    "http_port": 80,
+                    "https_port": 443,
+                    "origin_keepalive_timeout": 5,
+                    "origin_protocol_policy": "http-only",
+                    "origin_read_timeout": 30,
+                    "origin_ssl_protocols": [
+                      "TLSv1.2"
+                    ]
+                  }
+                ],
+                "domain_name": "alex-frontend-393470797331.s3-website-us-east-1.amazonaws.com",
+                "origin_access_control_id": "",
+                "origin_id": "S3-alex-frontend-393470797331",
+                "origin_path": "",
+                "origin_shield": [],
+                "s3_origin_config": [],
+                "vpc_origin_config": []
+              },
+              {
+                "connection_attempts": 3,
+                "connection_timeout": 10,
+                "custom_header": [],
+                "custom_origin_config": [
+                  {
+                    "http_port": 80,
+                    "https_port": 443,
+                    "origin_keepalive_timeout": 5,
+                    "origin_protocol_policy": "https-only",
+                    "origin_read_timeout": 30,
+                    "origin_ssl_protocols": [
+                      "TLSv1.2"
+                    ]
+                  }
+                ],
+                "domain_name": "0b75gjui0j.execute-api.us-east-1.amazonaws.com",
+                "origin_access_control_id": "",
+                "origin_id": "API-Gateway",
+                "origin_path": "",
+                "origin_shield": [],
+                "s3_origin_config": [],
+                "vpc_origin_config": []
+              }
+            ],
+            "origin_group": [],
+            "price_class": "PriceClass_All",
+            "restrictions": [
+              {
+                "geo_restriction": [
+                  {
+                    "locations": [],
+                    "restriction_type": "none"
+                  }
+                ]
+              }
+            ],
+            "retain_on_delete": false,
+            "staging": false,
+            "status": "Deployed",
+            "tags": {
+              "ManagedBy": "terraform",
+              "Part": "7_frontend",
+              "Project": "alex"
+            },
+            "tags_all": {
+              "ManagedBy": "terraform",
+              "Part": "7_frontend",
+              "Project": "alex"
+            },
+            "trusted_key_groups": [
+              {
+                "enabled": false,
+                "items": []
+              }
+            ],
+            "trusted_signers": [
+              {
+                "enabled": false,
+                "items": []
+              }
+            ],
+            "viewer_certificate": [
+              {
+                "acm_certificate_arn": "",
+                "cloudfront_default_certificate": true,
+                "iam_certificate_id": "",
+                "minimum_protocol_version": "TLSv1",
+                "ssl_support_method": ""
+              }
+            ],
+            "wait_for_deployment": true,
+            "web_acl_id": ""
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "aws_apigatewayv2_api.main",
+            "aws_s3_bucket.frontend",
+            "aws_s3_bucket_website_configuration.frontend",
+            "data.aws_caller_identity.current"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role",
+      "name": "api_lambda_role",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::393470797331:role/alex-api-lambda-role",
+            "assume_role_policy": "{\"Statement\":[{\"Action\":\"sts:AssumeRole\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"lambda.amazonaws.com\"}}],\"Version\":\"2012-10-17\"}",
+            "create_date": "2025-11-18T21:08:57Z",
+            "description": "",
+            "force_detach_policies": false,
+            "id": "alex-api-lambda-role",
+            "inline_policy": [
+              {
+                "name": "alex-api-lambda-aurora",
+                "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"rds-data:ExecuteStatement\",\"rds-data:BatchExecuteStatement\",\"rds-data:BeginTransaction\",\"rds-data:CommitTransaction\",\"rds-data:RollbackTransaction\"],\"Effect\":\"Allow\",\"Resource\":\"arn:aws:rds:us-east-1:393470797331:cluster:alex-aurora-cluster\"},{\"Action\":[\"secretsmanager:GetSecretValue\"],\"Effect\":\"Allow\",\"Resource\":\"arn:aws:secretsmanager:us-east-1:393470797331:secret:alex-aurora-credentials-e9e539bc-v98Ubw\"}]}"
+              },
+              {
+                "name": "alex-api-lambda-invoke",
+                "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":\"lambda:InvokeFunction\",\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:lambda:us-east-1:393470797331:function:alex-planner\",\"arn:aws:lambda:us-east-1:393470797331:function:alex-tagger\",\"arn:aws:lambda:us-east-1:393470797331:function:alex-reporter\",\"arn:aws:lambda:us-east-1:393470797331:function:alex-charter\",\"arn:aws:lambda:us-east-1:393470797331:function:alex-retirement\"]}]}"
+              },
+              {
+                "name": "alex-api-lambda-sqs",
+                "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"sqs:SendMessage\",\"sqs:GetQueueAttributes\"],\"Effect\":\"Allow\",\"Resource\":\"arn:aws:sqs:us-east-1:393470797331:alex-analysis-jobs\"}]}"
+              }
+            ],
+            "managed_policy_arns": [
+              "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+            ],
+            "max_session_duration": 3600,
+            "name": "alex-api-lambda-role",
+            "name_prefix": "",
+            "path": "/",
+            "permissions_boundary": "",
+            "tags": {
+              "ManagedBy": "terraform",
+              "Part": "7_frontend",
+              "Project": "alex"
+            },
+            "tags_all": {
+              "ManagedBy": "terraform",
+              "Part": "7_frontend",
+              "Project": "alex"
+            },
+            "unique_id": "AROAVXHFP4YJYCE6ZO4ML"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role_policy",
+      "name": "api_lambda_aurora",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "alex-api-lambda-role:alex-api-lambda-aurora",
+            "name": "alex-api-lambda-aurora",
+            "name_prefix": "",
+            "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"rds-data:ExecuteStatement\",\"rds-data:BatchExecuteStatement\",\"rds-data:BeginTransaction\",\"rds-data:CommitTransaction\",\"rds-data:RollbackTransaction\"],\"Effect\":\"Allow\",\"Resource\":\"arn:aws:rds:us-east-1:393470797331:cluster:alex-aurora-cluster\"},{\"Action\":[\"secretsmanager:GetSecretValue\"],\"Effect\":\"Allow\",\"Resource\":\"arn:aws:secretsmanager:us-east-1:393470797331:secret:alex-aurora-credentials-e9e539bc-v98Ubw\"}]}",
+            "role": "alex-api-lambda-role"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_iam_role.api_lambda_role",
+            "data.terraform_remote_state.database"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role_policy",
+      "name": "api_lambda_invoke",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "alex-api-lambda-role:alex-api-lambda-invoke",
+            "name": "alex-api-lambda-invoke",
+            "name_prefix": "",
+            "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":\"lambda:InvokeFunction\",\"Effect\":\"Allow\",\"Resource\":[\"arn:aws:lambda:us-east-1:393470797331:function:alex-planner\",\"arn:aws:lambda:us-east-1:393470797331:function:alex-tagger\",\"arn:aws:lambda:us-east-1:393470797331:function:alex-reporter\",\"arn:aws:lambda:us-east-1:393470797331:function:alex-charter\",\"arn:aws:lambda:us-east-1:393470797331:function:alex-retirement\"]}]}",
+            "role": "alex-api-lambda-role"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_iam_role.api_lambda_role",
+            "data.aws_caller_identity.current",
+            "data.aws_region.current"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role_policy",
+      "name": "api_lambda_sqs",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "alex-api-lambda-role:alex-api-lambda-sqs",
+            "name": "alex-api-lambda-sqs",
+            "name_prefix": "",
+            "policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"sqs:SendMessage\",\"sqs:GetQueueAttributes\"],\"Effect\":\"Allow\",\"Resource\":\"arn:aws:sqs:us-east-1:393470797331:alex-analysis-jobs\"}]}",
+            "role": "alex-api-lambda-role"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_iam_role.api_lambda_role",
+            "data.terraform_remote_state.agents"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_iam_role_policy_attachment",
+      "name": "api_lambda_basic",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "alex-api-lambda-role-20251118210858100000000001",
+            "policy_arn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+            "role": "alex-api-lambda-role"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_iam_role.api_lambda_role"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lambda_function",
+      "name": "api",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "architectures": [
+              "x86_64"
+            ],
+            "arn": "arn:aws:lambda:us-east-1:393470797331:function:alex-api",
+            "code_sha256": "DRG7NVdpf0tgfHC5f1DFFerZZJCR+VPLqU6Iwu4oBb0=",
+            "code_signing_config_arn": "",
+            "dead_letter_config": [],
+            "description": "",
+            "environment": [
+              {
+                "variables": {
+                  "AURORA_CLUSTER_ARN": "arn:aws:rds:us-east-1:393470797331:cluster:alex-aurora-cluster",
+                  "AURORA_DATABASE": "alex",
+                  "AURORA_SECRET_ARN": "arn:aws:secretsmanager:us-east-1:393470797331:secret:alex-aurora-credentials-e9e539bc-v98Ubw",
+                  "CLERK_ISSUER": "https://your-instance.clerk.accounts.dev",
+                  "CLERK_JWKS_URL": "https://welcomed-gnu-92.clerk.accounts.dev/.well-known/jwks.json",
+                  "CORS_ORIGINS": "http://localhost:3000,https://d1hnrs9tdojzww.cloudfront.net",
+                  "DEFAULT_AWS_REGION": "us-east-1",
+                  "SQS_QUEUE_URL": "https://sqs.us-east-1.amazonaws.com/393470797331/alex-analysis-jobs"
+                }
+              }
+            ],
+            "ephemeral_storage": [
+              {
+                "size": 512
+              }
+            ],
+            "file_system_config": [],
+            "filename": "./../../backend/api/api_lambda.zip",
+            "function_name": "alex-api",
+            "handler": "lambda_handler.handler",
+            "id": "alex-api",
+            "image_config": [],
+            "image_uri": "",
+            "invoke_arn": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:393470797331:function:alex-api/invocations",
+            "kms_key_arn": "",
+            "last_modified": "2025-11-18T21:12:11.829+0000",
+            "layers": [],
+            "logging_config": [
+              {
+                "application_log_level": "",
+                "log_format": "Text",
+                "log_group": "/aws/lambda/alex-api",
+                "system_log_level": ""
+              }
+            ],
+            "memory_size": 512,
+            "package_type": "Zip",
+            "publish": false,
+            "qualified_arn": "arn:aws:lambda:us-east-1:393470797331:function:alex-api:$LATEST",
+            "qualified_invoke_arn": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:393470797331:function:alex-api:$LATEST/invocations",
+            "replace_security_groups_on_destroy": null,
+            "replacement_security_group_ids": null,
+            "reserved_concurrent_executions": -1,
+            "role": "arn:aws:iam::393470797331:role/alex-api-lambda-role",
+            "runtime": "python3.12",
+            "s3_bucket": null,
+            "s3_key": null,
+            "s3_object_version": null,
+            "signing_job_arn": "",
+            "signing_profile_version_arn": "",
+            "skip_destroy": false,
+            "snap_start": [],
+            "source_code_hash": "DRG7NVdpf0tgfHC5f1DFFerZZJCR+VPLqU6Iwu4oBb0=",
+            "source_code_size": 22890937,
+            "tags": {
+              "ManagedBy": "terraform",
+              "Part": "7_frontend",
+              "Project": "alex"
+            },
+            "tags_all": {
+              "ManagedBy": "terraform",
+              "Part": "7_frontend",
+              "Project": "alex"
+            },
+            "timeout": 30,
+            "timeouts": null,
+            "tracing_config": [
+              {
+                "mode": "PassThrough"
+              }
+            ],
+            "version": "$LATEST",
+            "vpc_config": []
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6NjAwMDAwMDAwMDAwLCJ1cGRhdGUiOjYwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_apigatewayv2_api.main",
+            "aws_cloudfront_distribution.main",
+            "aws_iam_role.api_lambda_role",
+            "aws_iam_role_policy.api_lambda_aurora",
+            "aws_iam_role_policy.api_lambda_invoke",
+            "aws_iam_role_policy.api_lambda_sqs",
+            "aws_s3_bucket.frontend",
+            "aws_s3_bucket_website_configuration.frontend",
+            "data.aws_caller_identity.current",
+            "data.aws_region.current",
+            "data.terraform_remote_state.agents",
+            "data.terraform_remote_state.database"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_lambda_permission",
+      "name": "api_gw",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "action": "lambda:InvokeFunction",
+            "event_source_token": null,
+            "function_name": "alex-api",
+            "function_url_auth_type": null,
+            "id": "AllowExecutionFromAPIGateway",
+            "principal": "apigateway.amazonaws.com",
+            "principal_org_id": null,
+            "qualifier": "",
+            "source_account": null,
+            "source_arn": "arn:aws:execute-api:us-east-1:393470797331:0b75gjui0j/*/*",
+            "statement_id": "AllowExecutionFromAPIGateway",
+            "statement_id_prefix": ""
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_apigatewayv2_api.main",
+            "aws_cloudfront_distribution.main",
+            "aws_iam_role.api_lambda_role",
+            "aws_iam_role_policy.api_lambda_aurora",
+            "aws_iam_role_policy.api_lambda_invoke",
+            "aws_iam_role_policy.api_lambda_sqs",
+            "aws_lambda_function.api",
+            "aws_s3_bucket.frontend",
+            "aws_s3_bucket_website_configuration.frontend",
+            "data.aws_caller_identity.current",
+            "data.aws_region.current",
+            "data.terraform_remote_state.agents",
+            "data.terraform_remote_state.database"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_s3_bucket",
+      "name": "frontend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "acceleration_status": "",
+            "acl": null,
+            "arn": "arn:aws:s3:::alex-frontend-393470797331",
+            "bucket": "alex-frontend-393470797331",
+            "bucket_domain_name": "alex-frontend-393470797331.s3.amazonaws.com",
+            "bucket_prefix": "",
+            "bucket_regional_domain_name": "alex-frontend-393470797331.s3.us-east-1.amazonaws.com",
+            "cors_rule": [],
+            "force_destroy": false,
+            "grant": [
+              {
+                "id": "4c1d10ffd97b471b8a05f67e02bd626dc5ebed61bd2718ead49f31f888185ff6",
+                "permissions": [
+                  "FULL_CONTROL"
+                ],
+                "type": "CanonicalUser",
+                "uri": ""
+              }
+            ],
+            "hosted_zone_id": "Z3AQBSTGFYJSTF",
+            "id": "alex-frontend-393470797331",
+            "lifecycle_rule": [],
+            "logging": [],
+            "object_lock_configuration": [],
+            "object_lock_enabled": false,
+            "policy": "{\"Statement\":[{\"Action\":\"s3:GetObject\",\"Effect\":\"Allow\",\"Principal\":\"*\",\"Resource\":\"arn:aws:s3:::alex-frontend-393470797331/*\",\"Sid\":\"PublicReadGetObject\"}],\"Version\":\"2012-10-17\"}",
+            "region": "us-east-1",
+            "replication_configuration": [],
+            "request_payer": "BucketOwner",
+            "server_side_encryption_configuration": [
+              {
+                "rule": [
+                  {
+                    "apply_server_side_encryption_by_default": [
+                      {
+                        "kms_master_key_id": "",
+                        "sse_algorithm": "AES256"
+                      }
+                    ],
+                    "bucket_key_enabled": false
+                  }
+                ]
+              }
+            ],
+            "tags": {
+              "ManagedBy": "terraform",
+              "Part": "7_frontend",
+              "Project": "alex"
+            },
+            "tags_all": {
+              "ManagedBy": "terraform",
+              "Part": "7_frontend",
+              "Project": "alex"
+            },
+            "timeouts": null,
+            "versioning": [
+              {
+                "enabled": false,
+                "mfa_delete": false
+              }
+            ],
+            "website": [
+              {
+                "error_document": "404.html",
+                "index_document": "index.html",
+                "redirect_all_requests_to": "",
+                "routing_rules": ""
+              }
+            ],
+            "website_domain": "s3-website-us-east-1.amazonaws.com",
+            "website_endpoint": "alex-frontend-393470797331.s3-website-us-east-1.amazonaws.com"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjM2MDAwMDAwMDAwMDAsInJlYWQiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "data.aws_caller_identity.current"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_s3_bucket_policy",
+      "name": "frontend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "bucket": "alex-frontend-393470797331",
+            "id": "alex-frontend-393470797331",
+            "policy": "{\"Statement\":[{\"Action\":\"s3:GetObject\",\"Effect\":\"Allow\",\"Principal\":\"*\",\"Resource\":\"arn:aws:s3:::alex-frontend-393470797331/*\",\"Sid\":\"PublicReadGetObject\"}],\"Version\":\"2012-10-17\"}"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_s3_bucket.frontend",
+            "aws_s3_bucket_public_access_block.frontend",
+            "data.aws_caller_identity.current"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_s3_bucket_public_access_block",
+      "name": "frontend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "block_public_acls": false,
+            "block_public_policy": false,
+            "bucket": "alex-frontend-393470797331",
+            "id": "alex-frontend-393470797331",
+            "ignore_public_acls": false,
+            "restrict_public_buckets": false
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_s3_bucket.frontend",
+            "data.aws_caller_identity.current"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_s3_bucket_website_configuration",
+      "name": "frontend",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "bucket": "alex-frontend-393470797331",
+            "error_document": [
+              {
+                "key": "404.html"
+              }
+            ],
+            "expected_bucket_owner": "",
+            "id": "alex-frontend-393470797331",
+            "index_document": [
+              {
+                "suffix": "index.html"
+              }
+            ],
+            "redirect_all_requests_to": [],
+            "routing_rule": [],
+            "routing_rules": "",
+            "website_domain": "s3-website-us-east-1.amazonaws.com",
+            "website_endpoint": "alex-frontend-393470797331.s3-website-us-east-1.amazonaws.com"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "bnVsbA==",
+          "dependencies": [
+            "aws_s3_bucket.frontend",
+            "data.aws_caller_identity.current"
+          ]
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}

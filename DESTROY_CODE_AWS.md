@@ -1,0 +1,1 @@
+ cd terraform/5_database && terraform destroy  
