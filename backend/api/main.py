@@ -54,11 +54,11 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS configuration
 # Get origins from CORS_ORIGINS env var (comma-separated) or fall back to localhost
 cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000")
-# Use wildcard for local development, specific origins for production
-if cors_origins_env == "*" or "localhost" in cors_origins_env:
-    cors_origins = ["*"]  # Allow all origins in development (VS Code port forwarding uses random ports)
+# Only use wildcard when explicitly set to "*"
+if cors_origins_env.strip() == "*":
+    cors_origins = ["*"]
 else:
-    cors_origins = cors_origins_env.split(",")
+    cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,

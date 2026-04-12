@@ -18,11 +18,12 @@ python3 kb_stop.py                     # Graceful shutdown of all services
 ```
 `kb_start.py` handles IP changes, ARN sync, CORS config, kills stale processes on ports 3000/8000, and starts both services. Always use this instead of starting services manually.
 
-### Backend (Python/uv) — each agent dir is its own uv project
+### Backend (Python 3.12+ / uv) — each agent dir is its own uv project
 ```bash
 cd backend/<agent> && uv run pytest test_simple.py          # Local tests with mocks (MOCK_LAMBDAS=true)
 cd backend/<agent> && uv run pytest test_full.py             # Deployment tests (real AWS)
 cd backend/<agent> && uv run pytest test_simple.py::test_fn -v  # Single test
+cd backend/<agent> && uv run pytest tests/ -v               # Run tests/ subdirectory (CI uses this path)
 cd backend && uv run run_all_tests.py                        # Run ALL agent mock tests at once
 cd backend/<agent> && uv run package_docker.py               # Package for Lambda (Docker must be running!)
 cd backend/<agent> && uv add <package>                       # Add dependency
@@ -30,6 +31,8 @@ cd backend && uv run deploy_all_lambdas.py                   # Deploy all 5 agen
 cd backend && uv run deploy_all_lambdas.py --package         # Re-package + deploy all agents
 ```
 **Workspace layout**: `backend/` is a uv workspace with members `database`, `api`, `scheduler` (shared via `[tool.uv.sources]`). The 5 agent dirs (planner, tagger, reporter, charter, retirement) and `researcher` have independent `pyproject.toml` files outside the workspace. This means agents resolve their own dependencies separately — run `uv sync` inside each agent dir, not from `backend/` root. Shared test utilities live in `backend/tests_common/`.
+
+**Test file convention**: Each agent has both root-level test files (`test_simple.py`, `test_full.py`) and a `tests/` subdirectory with `conftest.py`. CI runs the `tests/` subdirectory; root-level files are for manual local testing.
 
 ### Database Migrations
 ```bash
@@ -39,7 +42,7 @@ cd backend/database && uv run seed_data.py                   # Seed initial data
 ```
 Migration files are in `backend/database/migrations/`. After recreating Aurora, always run migrations before testing.
 
-### Frontend (Next.js 16 Pages Router — React 19, Tailwind v4, Clerk auth)
+### Frontend (Next.js 16 Pages Router — React 19, Tailwind v4, Clerk auth, Node 20)
 ```bash
 cd frontend && npm run dev            # Dev server (localhost:3000)
 cd frontend && npm run build          # Production build (static export to out/)
@@ -54,6 +57,8 @@ cd frontend && npm run lint           # Lint
 Build uses a config swap: `npm run build` copies `next.config.prod.ts` (with `output: 'export'`) over `next.config.ts`, then `npm run dev` restores `next.config.dev.ts` (SSR mode).
 
 **Frontend test structure**: Unit tests in `__tests__/`, E2E in `e2e/`, mocks in `__mocks__/` (includes `@clerk/` auth mocks, `react-markdown`, `remark-gfm`), test helpers in `test-utils/`. Path alias `@/*` maps to `./` in both app and test config.
+
+**Frontend key libraries**: `recharts` (charts/visualizations), `@microsoft/fetch-event-source` (SSE streaming for real-time agent progress), `react-markdown` + `remark-gfm` (rendering agent analysis output). Mocks for `react-markdown` and `recharts` exist in `__mocks__/`.
 
 **Frontend env files**: `.env.local` (dev), `.env.production.local` (prod). Key var: `NEXT_PUBLIC_API_URL` — the API Gateway endpoint URL.
 
@@ -238,6 +243,7 @@ Aurora (Guide 5) is the biggest cost. Destroy when not working: `cd terraform/5_
 
 ### Approach
 - **Diagnose before fixing**: don't write code before understanding the root cause. One change at a time.
+- **Observations → Reasoning → Action**: explain what you see, reason about the cause, then propose a fix. Add console/print logs to gather info when needed.
 - **Ask which guide** the student is on — this determines what infrastructure exists.
 - **Read the guides** in `guides/` before helping with guide-specific work.
 
